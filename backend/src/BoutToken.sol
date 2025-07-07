@@ -48,8 +48,8 @@ contract BoutToken is ERC20Burnable, Ownable{
 
     address public tracker;
 
-    constructor() ERC20("BoutToken","BOUT") Ownable(msg.sender){
-        
+    constructor(address _tracker) ERC20("BoutToken","BOUT") Ownable(msg.sender){
+        tracker = _tracker;
     }
 
     function mint(address to, uint256 amount) external onlyTracker{
