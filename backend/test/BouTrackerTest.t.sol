@@ -222,7 +222,6 @@ contract BoutTrackerTest is Test {
 
         assertEq(boutTracker.getPendingRewards(1).consumerReward, consumerReward);
         assertEq(boutTracker.getPendingRewards(1).supplierBonus, supplierBonus);
-        assertEq(boutTracker.getPendingRewards(1).claimed, false);
     }
 
     function testFuzzPendingCalculatesCorrectAmounts(uint256 bottleCount) public PackageReceivedByConsumer {
@@ -257,7 +256,6 @@ contract BoutTrackerTest is Test {
         vm.prank(USER);
         boutTracker.confirmReturn(1);
         assertEq(uint256(boutNFT.getPackageStatus(1)), uint256(BoutNFT.PackageStatus.CONFIRMED));
-        assertEq(boutTracker.getPendingRewards(1).claimed, true);
         assertEq(
             uint256(boutTracker.getWithdrawableRewards(consumer)),
             uint256(boutTracker.getPendingRewards(1).consumerReward)
@@ -271,14 +269,6 @@ contract BoutTrackerTest is Test {
         vm.prank(USER);
         vm.expectRevert(BoutTracker.BootTracker__PackageNotInReturnedState.selector);
         boutTracker.confirmReturn(1);
-    }
-
-    function testCantConfirmReturnIfAlreadyClaimed() public PackageReturnedByConsumer {
-        vm.startPrank(USER);
-        boutTracker.confirmReturn(1);
-        vm.expectRevert(BoutTracker.BoutTracker__RewardsAlreadyClaimed.selector);
-        boutTracker.confirmReturn(1);
-        vm.stopPrank();
     }
 
     function testCantConfirmReturnIfNoPendingReward() public PackageReturnedByConsumer {

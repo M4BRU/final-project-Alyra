@@ -1,0 +1,5 @@
+{
+  "detectors_to_exclude": "pragma,solc-version,unused-return,reentrancy-benign,timestamp",
+  "filter_paths": "lib/,test/",
+  "compilation_skip": false
+}

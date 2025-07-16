@@ -30,7 +30,6 @@ struct ConsumerStats {
 struct PendingRewards {
     uint256 consumerReward;
     uint256 supplierBonus;
-    bool claimed;
 }
 
 contract BoutTracker is Ownable, ReentrancyGuard {
@@ -95,8 +94,6 @@ contract BoutTracker is Ownable, ReentrancyGuard {
     error BootTracker__MustReturnOneBottle();
     error BootTracker__CantReturnMoreThanReceived();
     error BootTracker__PackageNotInReturnedState();
-    error BoutTracker__RewardsAlreadyClaimed();
-    error BoutTracker__NoPendingRewards();
     error BoutTracker__NoRewardsToWithdraw();
     error BoutTracker__BonusRateCantExceed100();
     error BoutTracker__NotIntendedConsumer();
@@ -283,8 +280,7 @@ contract BoutTracker is Ownable, ReentrancyGuard {
         uint256 consumerReward = returnedCount * s_rewardPerBottleReturned;
         uint256 supplierBonus = (consumerReward * s_supplierBonusRate) / 100; //A REVOIR
 
-        s_pendingRewards[tokenId] =
-            PendingRewards({consumerReward: consumerReward, supplierBonus: supplierBonus, claimed: false});
+        s_pendingRewards[tokenId] = PendingRewards({consumerReward: consumerReward, supplierBonus: supplierBonus});
 
         i_boutNFT.setReturnedCount(tokenId, returnedCount);
         i_boutNFT.updateStatus(tokenId, BoutNFT.PackageStatus.RETURNED);
@@ -309,16 +305,9 @@ contract BoutTracker is Ownable, ReentrancyGuard {
         }
 
         PendingRewards storage rewards = s_pendingRewards[tokenId];
-        if (rewards.claimed) {
-            revert BoutTracker__RewardsAlreadyClaimed();
-        }
-        if (rewards.consumerReward <= 0) {
-            revert BoutTracker__NoPendingRewards();
-        }
+
         s_withdrawableRewards[pkg.consumer] += rewards.consumerReward;
         s_withdrawableRewards[pkg.sender] += rewards.supplierBonus;
-
-        rewards.claimed = true;
 
         _updateRewardStats(pkg.sender, pkg.consumer, rewards.consumerReward, rewards.supplierBonus);
 
@@ -425,7 +414,7 @@ contract BoutTracker is Ownable, ReentrancyGuard {
         if (!s_tokenExists[tokenId]) return false;
 
         PendingRewards memory rewards = s_pendingRewards[tokenId];
-        return !rewards.claimed && rewards.consumerReward > 0;
+        return i_boutNFT.getPackageStatus(tokenId) == BoutNFT.PackageStatus.RETURNED && rewards.consumerReward > 0;
     }
 
     // ========== ROLE GETTERS ==========
