@@ -317,6 +317,7 @@ contract BoutTracker is Ownable, ReentrancyGuard {
 
         emit RewardsAllocated(tokenId, pkg.consumer, rewards.consumerReward, pkg.sender, rewards.supplierBonus);
     }
+    
 
     function withdrawRewards() external nonReentrant {
         uint256 amount = s_withdrawableRewards[msg.sender];
