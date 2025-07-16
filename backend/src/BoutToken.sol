@@ -45,6 +45,7 @@ contract BoutToken is ERC20Burnable, Ownable{
         }
         
     }
+    
 
     address public tracker;
 
