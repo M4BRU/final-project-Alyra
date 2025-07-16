@@ -6,47 +6,73 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {BoutNFT} from "./BoutNFT.sol";
 import {BoutToken} from "./BoutToken.sol";
 
-enum UserRole{
+enum UserRole {
     NONE,
     SUPPLIER,
     CONSUMER,
     ADMIN
 }
 
-struct SupplierStats{
-        uint256 totalPackageSent;
-        uint256 totalBottlesSent;
-        uint256 totalBottlesReturned;
-        uint256 totalRewardsEarned;
-    }
+struct SupplierStats {
+    uint256 totalPackageSent;
+    uint256 totalBottlesSent;
+    uint256 totalBottlesReturned;
+    uint256 totalRewardsEarned;
+}
 
-    struct ConsumerStats {
-        uint256 totalPackagesReceived;
-        uint256 totalBottlesReceived;
-        uint256 totalBottlesReturned;
-        uint256 totalRewardsEarned;
-    }
+struct ConsumerStats {
+    uint256 totalPackagesReceived;
+    uint256 totalBottlesReceived;
+    uint256 totalBottlesReturned;
+    uint256 totalRewardsEarned;
+}
 
-    struct PendingRewards{
-        uint256 consumerReward;
-        uint256 supplierBonus;
-        bool claimed;
-    }
+struct PendingRewards {
+    uint256 consumerReward;
+    uint256 supplierBonus;
+    bool claimed;
+}
 
-contract BoutTracker is Ownable, ReentrancyGuard{
-
+contract BoutTracker is Ownable, ReentrancyGuard {
     event SupplierRegistered(address indexed addressSupplier);
     event ConsumerRegistered(address indexed addressConsumer);
     event UserRoleRevoked(address indexed user, UserRole oldRole);
     event PackageCreated(uint256 indexed tokenId, address indexed supplier, uint256 bottleCount, string packageLink);
     event PackageReceived(uint256 indexed tokenId, address indexed consumer, address indexed supplier);
-    event BottlesReturned(uint256 indexed tokenId, address indexed consumer, address indexed supplier, uint256 returnedCount, uint256 consumerReward, uint256 supplierBonus);
-    event ReturnConfirmed(uint256 indexed tokenId, address indexed supplier,address indexed consumer, uint256 returnedCount);
-    event BottlesReturnedPending(uint256 indexed tokenId, address indexed consumer, address indexed supplier, uint256 pendingConsumerReward, uint256 pendingSupplierBonus);
-    event RewardsDistributed(uint256 indexed tokenId, address indexed consumer, uint256 consumerReward, address indexed supplier, uint256 supplierBonus);
-    event RewardsAllocated(uint256 indexed tokenId, address indexed consumer, uint256 consumerReward, address indexed supplier, uint256 supplierBonus);
+    event BottlesReturned(
+        uint256 indexed tokenId,
+        address indexed consumer,
+        address indexed supplier,
+        uint256 returnedCount,
+        uint256 consumerReward,
+        uint256 supplierBonus
+    );
+    event ReturnConfirmed(
+        uint256 indexed tokenId, address indexed supplier, address indexed consumer, uint256 returnedCount
+    );
+    event BottlesReturnedPending(
+        uint256 indexed tokenId,
+        address indexed consumer,
+        address indexed supplier,
+        uint256 pendingConsumerReward,
+        uint256 pendingSupplierBonus
+    );
+    event RewardsDistributed(
+        uint256 indexed tokenId,
+        address indexed consumer,
+        uint256 consumerReward,
+        address indexed supplier,
+        uint256 supplierBonus
+    );
+    event RewardsAllocated(
+        uint256 indexed tokenId,
+        address indexed consumer,
+        uint256 consumerReward,
+        address indexed supplier,
+        uint256 supplierBonus
+    );
     event RewardsWithdrawn(address indexed user, uint256 amount);
-    event RewardPerBottleUpdated(uint256  oldReward, uint256  newReward);
+    event RewardPerBottleUpdated(uint256 oldReward, uint256 newReward);
     event SupplierBonusRateUpdated(uint256 oldRate, uint256 newRate);
     event EmergencyStatusUpdate(uint256 indexed tokenId, BoutNFT.PackageStatus status);
     event MaliciousSupplierBanned(address indexed supplier, uint256 packagesBanned, string reason);
@@ -80,7 +106,7 @@ contract BoutTracker is Ownable, ReentrancyGuard{
 
     BoutNFT private immutable i_boutNFT;
     BoutToken private immutable i_boutToken;
-    uint256 private s_rewardPerBottleReturned  = 10 * 1e18;
+    uint256 private s_rewardPerBottleReturned = 10 * 1e18;
     uint256 private s_supplierBonusRate = 10;
 
     mapping(address => UserRole) private s_userRoles;
@@ -91,10 +117,10 @@ contract BoutTracker is Ownable, ReentrancyGuard{
     mapping(string => uint256) private s_linkToTokenId;
     mapping(uint256 => bool) private s_tokenExists;
 
-// ========== PULL REWARDS SYSTEM ==========
+    // ========== PULL REWARDS SYSTEM ==========
     mapping(address => uint256) private s_withdrawableRewards;
 
-// ========== ESCROW REWARDS MANAGEMENT ==========
+    // ========== ESCROW REWARDS MANAGEMENT ==========
     mapping(uint256 => PendingRewards) private s_pendingRewards;
 
     uint256 private s_totalPackagesCreated;
@@ -102,12 +128,11 @@ contract BoutTracker is Ownable, ReentrancyGuard{
     uint256 private s_totalBottlesReturned;
     uint256 private s_totalRewardsDistributed;
 
-
-    constructor(address _boutNFT, address _boutToken) Ownable(msg.sender){
-        if(_boutNFT == address(0)){
+    constructor(address _boutNFT, address _boutToken) Ownable(msg.sender) {
+        if (_boutNFT == address(0)) {
             revert BoutTracker__BootNFTAddressCantBeZero();
         }
-        if(_boutToken == address(0)){
+        if (_boutToken == address(0)) {
             revert BoutTracker__BootTokenAddressCantBeZero();
         }
 
@@ -115,31 +140,31 @@ contract BoutTracker is Ownable, ReentrancyGuard{
         i_boutToken = BoutToken(_boutToken);
     }
 
-    modifier onlySupplier(){
-        if(s_userRoles[msg.sender] != UserRole.SUPPLIER){
+    modifier onlySupplier() {
+        if (s_userRoles[msg.sender] != UserRole.SUPPLIER) {
             revert BoutTracker__OnlySupplierCanAccessFunction();
         }
         _;
     }
 
-    modifier onlyConsumer(){
-        if(s_userRoles[msg.sender] != UserRole.CONSUMER){
+    modifier onlyConsumer() {
+        if (s_userRoles[msg.sender] != UserRole.CONSUMER) {
             revert BoutTracker__OnlyConsumerCanAccessFunction();
         }
         _;
     }
 
-    modifier onlyRegisteredUser(){
-        if(s_userRoles[msg.sender] == UserRole.NONE){
+    modifier onlyRegisteredUser() {
+        if (s_userRoles[msg.sender] == UserRole.NONE) {
             revert BoutTracker__OnlyRegisteredUserCanAccessFunction();
         }
         _;
     }
 
-// ========== USER REGISTRATION ==========
+    // ========== USER REGISTRATION ==========
 
-    function registerAsSupplier() external{
-        if(s_userRoles[msg.sender] != UserRole.NONE){
+    function registerAsSupplier() external {
+        if (s_userRoles[msg.sender] != UserRole.NONE) {
             revert BoutTracker__UserAlreadyRegistered();
         }
 
@@ -148,8 +173,8 @@ contract BoutTracker is Ownable, ReentrancyGuard{
         emit SupplierRegistered(msg.sender);
     }
 
-    function registerAsConsumer() external{
-        if(s_userRoles[msg.sender] != UserRole.NONE){
+    function registerAsConsumer() external {
+        if (s_userRoles[msg.sender] != UserRole.NONE) {
             revert BoutTracker__UserAlreadyRegistered();
         }
 
@@ -158,38 +183,37 @@ contract BoutTracker is Ownable, ReentrancyGuard{
         emit ConsumerRegistered(msg.sender);
     }
 
-    function revokeUserRole(address user) external onlyOwner{
+    function revokeUserRole(address user) external onlyOwner {
         UserRole oldRole = s_userRoles[user];
         s_userRoles[user] = UserRole.NONE;
 
         emit UserRoleRevoked(user, oldRole);
     }
 
-// ========== SUPPLIER FUNCTIONS ==========
+    // ========== SUPPLIER FUNCTIONS ==========
 
-    function createPackage(uint256 bottleCount, string memory packageLink, address intendedConsumer) external onlySupplier returns(uint256){
-        if(bottleCount <= 0){
+    function createPackage(uint256 bottleCount, string memory packageLink, address intendedConsumer)
+        external
+        onlySupplier
+        returns (uint256)
+    {
+        if (bottleCount <= 0) {
             revert BoutTracker__BottleCountIncorrect();
         }
-        if(bytes(packageLink).length <= 0){
+        if (bytes(packageLink).length <= 0) {
             revert BoutTracker__PackageLinkEmpty();
         }
-        if(intendedConsumer == address(0)){
+        if (intendedConsumer == address(0)) {
             revert BoutTracker__IntendedConsumerCannotBeZero();
         }
-        if(s_linkToTokenId[packageLink] != 0){
+        if (s_linkToTokenId[packageLink] != 0) {
             revert BoutTracker__PackageLinkAlreadyExist();
         }
-        if(s_userRoles[intendedConsumer] != UserRole.CONSUMER){
+        if (s_userRoles[intendedConsumer] != UserRole.CONSUMER) {
             revert BoutTracker__ConsumerAssignedIsNotRegistered();
         }
 
-        uint256 tokenId = i_boutNFT.createPackage(
-            msg.sender,
-            bottleCount,
-            packageLink,
-            intendedConsumer
-        );
+        uint256 tokenId = i_boutNFT.createPackage(msg.sender, bottleCount, packageLink, intendedConsumer);
 
         s_linkToTokenId[packageLink] = tokenId;
         s_tokenExists[tokenId] = true;
@@ -206,21 +230,20 @@ contract BoutTracker is Ownable, ReentrancyGuard{
         return tokenId;
     }
 
+    // ========== CONSUMER FUNCTIONS ==========
 
-// ========== CONSUMER FUNCTIONS ==========
-
-    function receivePackage(string memory packageLink) external{
+    function receivePackage(string memory packageLink) external {
         uint256 tokenId = s_linkToTokenId[packageLink];
-        if(tokenId == 0){
+        if (tokenId == 0) {
             revert BootTracker__PackageLinkDoesntExist();
         }
 
-        if(i_boutNFT.getPackageStatus(tokenId) != BoutNFT.PackageStatus.SENT){
+        if (i_boutNFT.getPackageStatus(tokenId) != BoutNFT.PackageStatus.SENT) {
             revert BootTracker__PackageNotAvailable();
         }
 
         BoutNFT.Package memory pkg = i_boutNFT.getPackage(tokenId);
-        if(pkg.consumer != msg.sender){
+        if (pkg.consumer != msg.sender) {
             revert BoutTracker__NotIntendedConsumer();
         }
 
@@ -235,68 +258,61 @@ contract BoutTracker is Ownable, ReentrancyGuard{
         emit PackageReceived(tokenId, msg.sender, pkg.sender);
     }
 
-    function returnBottles(uint256 tokenId, uint256 returnedCount) external{
+    function returnBottles(uint256 tokenId, uint256 returnedCount) external {
         BoutNFT.Package memory pkg = i_boutNFT.getPackage(tokenId);
-        if(pkg.consumer != msg.sender){
+        if (pkg.consumer != msg.sender) {
             revert BoutTracker__NotIntendedConsumer();
         }
-        
-        if(!s_tokenExists[tokenId]){
+
+        if (!s_tokenExists[tokenId]) {
             revert BootTracker__TokenDoesntExist();
         }
-        
-        if(pkg.status != BoutNFT.PackageStatus.RECEIVED){
+
+        if (pkg.status != BoutNFT.PackageStatus.RECEIVED) {
             revert BootTracker__PackageNotReceived();
         }
-        if(returnedCount <= 0){
+        if (returnedCount <= 0) {
             revert BootTracker__MustReturnOneBottle();
         }
-        if(returnedCount > pkg.bottleCount){
+        if (returnedCount > pkg.bottleCount) {
             revert BootTracker__CantReturnMoreThanReceived();
         }
 
         i_boutNFT.transferFrom(msg.sender, pkg.sender, tokenId);
 
         uint256 consumerReward = returnedCount * s_rewardPerBottleReturned;
-        uint256 supplierBonus = (consumerReward * s_supplierBonusRate) /100;//A REVOIR
+        uint256 supplierBonus = (consumerReward * s_supplierBonusRate) / 100; //A REVOIR
 
-        s_pendingRewards[tokenId] = PendingRewards({
-            consumerReward: consumerReward,
-            supplierBonus: supplierBonus,
-            claimed: false
-        });
-
+        s_pendingRewards[tokenId] =
+            PendingRewards({consumerReward: consumerReward, supplierBonus: supplierBonus, claimed: false});
 
         i_boutNFT.setReturnedCount(tokenId, returnedCount);
         i_boutNFT.updateStatus(tokenId, BoutNFT.PackageStatus.RETURNED);
 
         _updateReturnStatsWithoutRewards(pkg.sender, msg.sender, returnedCount);
 
-        emit BottlesReturnedPending(tokenId, msg.sender, pkg.sender, consumerReward, supplierBonus);    
-        
+        emit BottlesReturnedPending(tokenId, msg.sender, pkg.sender, consumerReward, supplierBonus);
     }
-
-   
 
     function confirmReturn(uint256 tokenId) external {
         BoutNFT.Package memory pkg = i_boutNFT.getPackage(tokenId);
-        if(pkg.sender != msg.sender){
+        if (pkg.sender != msg.sender) {
             revert BoutTracker__OnlyAssignedSupplierCanAccessFunction();
         }
-        
-        if(!s_tokenExists[tokenId]){
+
+        if (!s_tokenExists[tokenId]) {
             revert BootTracker__TokenDoesntExist();
         }
 
-        if(pkg.status != BoutNFT.PackageStatus.RETURNED){
+        if (pkg.status != BoutNFT.PackageStatus.RETURNED) {
             revert BootTracker__PackageNotInReturnedState();
         }
 
         PendingRewards storage rewards = s_pendingRewards[tokenId];
-        if(rewards.claimed){
+        if (rewards.claimed) {
             revert BoutTracker__RewardsAlreadyClaimed();
         }
-        if(rewards.consumerReward <= 0){
+        if (rewards.consumerReward <= 0) {
             revert BoutTracker__NoPendingRewards();
         }
         s_withdrawableRewards[pkg.consumer] += rewards.consumerReward;
@@ -313,9 +329,9 @@ contract BoutTracker is Ownable, ReentrancyGuard{
         emit RewardsAllocated(tokenId, pkg.consumer, rewards.consumerReward, pkg.sender, rewards.supplierBonus);
     }
 
-    function withdrawRewards() external nonReentrant{
+    function withdrawRewards() external nonReentrant {
         uint256 amount = s_withdrawableRewards[msg.sender];
-        if(amount <= 0){
+        if (amount <= 0) {
             revert BoutTracker__NoRewardsToWithdraw();
         }
 
@@ -325,9 +341,7 @@ contract BoutTracker is Ownable, ReentrancyGuard{
         emit RewardsWithdrawn(msg.sender, amount);
     }
 
-
-
-    function _updateReturnStatsWithoutRewards(address supplier, address consumer, uint256 returnedCount) private{
+    function _updateReturnStatsWithoutRewards(address supplier, address consumer, uint256 returnedCount) private {
         ConsumerStats storage cStats = s_consumerStats[consumer];
         cStats.totalBottlesReturned += returnedCount;
 
@@ -337,21 +351,23 @@ contract BoutTracker is Ownable, ReentrancyGuard{
         s_totalBottlesReturned += returnedCount;
     }
 
-    function _updateRewardStats(address supplier, address consumer, uint256 consumerReward, uint256 supplierBonus) private{
+    function _updateRewardStats(address supplier, address consumer, uint256 consumerReward, uint256 supplierBonus)
+        private
+    {
         s_consumerStats[consumer].totalRewardsEarned += consumerReward;
         s_supplierStats[supplier].totalRewardsEarned += supplierBonus;
     }
 
-// ========== ADMIN FUNCTIONS ==========
+    // ========== ADMIN FUNCTIONS ==========
 
-    function setRewardPerBottle(uint256 _rewardPerBottle) external onlyOwner{
+    function setRewardPerBottle(uint256 _rewardPerBottle) external onlyOwner {
         uint256 oldReward = s_rewardPerBottleReturned;
         s_rewardPerBottleReturned = _rewardPerBottle;
-        emit RewardPerBottleUpdated(oldReward, _rewardPerBottle);//plus tard DAO ?
+        emit RewardPerBottleUpdated(oldReward, _rewardPerBottle); //plus tard DAO ?
     }
 
-    function setSupplierBonusRate(uint256 _bonusRate) external onlyOwner{
-        if(_bonusRate > 100){
+    function setSupplierBonusRate(uint256 _bonusRate) external onlyOwner {
+        if (_bonusRate > 100) {
             revert BoutTracker__BonusRateCantExceed100();
         }
         uint256 oldRate = s_supplierBonusRate;
@@ -359,8 +375,8 @@ contract BoutTracker is Ownable, ReentrancyGuard{
         emit SupplierBonusRateUpdated(oldRate, _bonusRate);
     }
 
-    function emergencyUpdateStatus(uint256 tokenId, BoutNFT.PackageStatus status) external onlyOwner{
-        if(!s_tokenExists[tokenId]){
+    function emergencyUpdateStatus(uint256 tokenId, BoutNFT.PackageStatus status) external onlyOwner {
+        if (!s_tokenExists[tokenId]) {
             revert BootTracker__TokenDoesntExist();
         }
 
@@ -369,93 +385,80 @@ contract BoutTracker is Ownable, ReentrancyGuard{
         emit EmergencyStatusUpdate(tokenId, status);
     }
 
-    function banSupplierPackages(address maliciousSupplier, string memory reason) external onlyOwner{
-        uint256[]memory activePackages = i_boutNFT.getActiveSupplierPackages(maliciousSupplier);
+    function banSupplierPackages(address maliciousSupplier, string memory reason) external onlyOwner {
+        uint256[] memory activePackages = i_boutNFT.getActiveSupplierPackages(maliciousSupplier);
 
-        for(uint256 i = 0; i < activePackages.length; i++){
+        for (uint256 i = 0; i < activePackages.length; i++) {
             i_boutNFT.banPackage(activePackages[i], reason);
         }
 
         emit MaliciousSupplierBanned(maliciousSupplier, activePackages.length, reason);
     }
 
-
-
-
-    function getGlobalStats() external view returns (
-        uint256 totalPackages,
-        uint256 totalBottlesCirculation,
-        uint256 totalBottlesReturned,
-        uint256 totalRewards,
-        uint256 globalReturnRate
-    ) {
+    function getGlobalStats()
+        external
+        view
+        returns (
+            uint256 totalPackages,
+            uint256 totalBottlesCirculation,
+            uint256 totalBottlesReturned,
+            uint256 totalRewards,
+            uint256 globalReturnRate
+        )
+    {
         totalPackages = s_totalPackagesCreated;
         totalBottlesCirculation = s_totalBottlesInCirculation;
         totalBottlesReturned = s_totalBottlesReturned;
         totalRewards = s_totalRewardsDistributed;
-    
+
         // Taux de retour global
         if (s_totalBottlesInCirculation > 0) {
             globalReturnRate = (s_totalBottlesReturned * 100) / s_totalBottlesInCirculation;
         }
     }
 
-
     function getPendingRewards(uint256 tokenId) external view returns (PendingRewards memory) {
         return s_pendingRewards[tokenId];
     }
 
-
-
     function hasUnclaimedRewards(uint256 tokenId) external view returns (bool) {
         if (!s_tokenExists[tokenId]) return false;
-    
+
         PendingRewards memory rewards = s_pendingRewards[tokenId];
         return !rewards.claimed && rewards.consumerReward > 0;
     }
 
+    // ========== ROLE GETTERS ==========
+    function getUserRole(address user) external view returns (UserRole) {
+        return s_userRoles[user];
+    }
 
+    function isSupplier(address user) external view returns (bool) {
+        return s_userRoles[user] == UserRole.SUPPLIER;
+    }
 
-// ========== ROLE GETTERS ==========
-function getUserRole(address user) external view returns (UserRole) {
-    return s_userRoles[user];
-}
+    function isConsumer(address user) external view returns (bool) {
+        return s_userRoles[user] == UserRole.CONSUMER;
+    }
 
-function isSupplier(address user) external view returns (bool) {
-    return s_userRoles[user] == UserRole.SUPPLIER;
-}
+    function isRegistered(address user) external view returns (bool) {
+        return s_userRoles[user] != UserRole.NONE;
+    }
 
-function isConsumer(address user) external view returns (bool) {
-    return s_userRoles[user] == UserRole.CONSUMER;
-}
+    // ========== WITHDRAW GETTERS ==========
+    function getWithdrawableRewards(address user) external view returns (uint256) {
+        return s_withdrawableRewards[user];
+    }
 
-function isRegistered(address user) external view returns (bool) {
-    return s_userRoles[user] != UserRole.NONE;
-}
+    function getMyWithdrawableRewards() external view returns (uint256) {
+        return s_withdrawableRewards[msg.sender];
+    }
 
+    function hasWithdrawableRewards(address user) external view returns (bool) {
+        return s_withdrawableRewards[user] > 0;
+    }
 
-
-
-
-
-
-// ========== WITHDRAW GETTERS ==========
-function getWithdrawableRewards(address user) external view returns (uint256) {
-    return s_withdrawableRewards[user];
-}
-
-function getMyWithdrawableRewards() external view returns (uint256) {
-    return s_withdrawableRewards[msg.sender];
-}
-
-function hasWithdrawableRewards(address user) external view returns (bool) {
-    return s_withdrawableRewards[user] > 0;
-}
-
-
-
-
-// ========== GETTERS FOR CONTRACTS ==========
+    // ========== GETTERS FOR CONTRACTS ==========
     function getBoutNFT() external view returns (address) {
         return address(i_boutNFT);
     }
@@ -464,7 +467,7 @@ function hasWithdrawableRewards(address user) external view returns (bool) {
         return address(i_boutToken);
     }
 
-// ========== GETTERS FOR CONFIGURATION ==========
+    // ========== GETTERS FOR CONFIGURATION ==========
     function getRewardPerBottleReturned() external view returns (uint256) {
         return s_rewardPerBottleReturned;
     }
@@ -473,7 +476,7 @@ function hasWithdrawableRewards(address user) external view returns (bool) {
         return s_supplierBonusRate;
     }
 
-// ========== GETTERS FOR QR LINKS ==========
+    // ========== GETTERS FOR QR LINKS ==========
     function getTokenIdByLink(string memory packageLink) external view returns (uint256) {
         return s_linkToTokenId[packageLink];
     }
@@ -482,7 +485,7 @@ function hasWithdrawableRewards(address user) external view returns (bool) {
         return s_tokenExists[tokenId];
     }
 
-// ========== GETTERS FOR GLOBAL STATS ==========
+    // ========== GETTERS FOR GLOBAL STATS ==========
     function getTotalPackagesCreated() external view returns (uint256) {
         return s_totalPackagesCreated;
     }
@@ -499,7 +502,7 @@ function hasWithdrawableRewards(address user) external view returns (bool) {
         return s_totalRewardsDistributed;
     }
 
-// ========== GETTERS FOR USER STATS ==========
+    // ========== GETTERS FOR USER STATS ==========
     function getSupplierStats(address supplier) external view returns (SupplierStats memory) {
         return s_supplierStats[supplier];
     }
@@ -507,6 +510,4 @@ function hasWithdrawableRewards(address user) external view returns (bool) {
     function getConsumerStats(address consumer) external view returns (ConsumerStats memory) {
         return s_consumerStats[consumer];
     }
-
-
 }

@@ -6,8 +6,7 @@ import {BoutTracker, UserRole} from "src/BoutTracker.sol";
 import {BoutNFT} from "src/BoutNFT.sol";
 import {DeployBoutSystem} from "script/DeployBoutSystem.s.sol";
 
-
-contract BoutTrackerTest is Test{
+contract BoutTrackerTest is Test {
     BoutTracker boutTracker;
     BoutNFT boutNFT;
     address USER = makeAddr("user");
@@ -18,12 +17,10 @@ contract BoutTrackerTest is Test{
     uint256 public constant DEFAULT_REWARD_PER_BOTTLE = 10 * 1e18;
     uint256 public constant DEFAULT_SUPPLIER_BONUS_RATE = 10;
 
-
-    function setUp() external{
+    function setUp() external {
         DeployBoutSystem deployBoutSystem = new DeployBoutSystem();
         DeployBoutSystem.DeployedContracts memory deployed = deployBoutSystem.run();
-        
-        
+
         boutTracker = deployed.boutTracker;
         boutNFT = deployed.boutNFT;
         owner = boutTracker.owner();
@@ -32,10 +29,9 @@ contract BoutTrackerTest is Test{
         console.log("msg.sender:", msg.sender);
     }
 
-    function testInitialize() public {
+    function testInitialize() public {}
 
-    }
-    function testRegisterAsSupplier() public{
+    function testRegisterAsSupplier() public {
         vm.prank(USER);
         boutTracker.registerAsSupplier();
         assertEq(boutTracker.isRegistered(USER), true);
@@ -43,7 +39,7 @@ contract BoutTrackerTest is Test{
         assertEq(boutTracker.isConsumer(USER), false);
     }
 
-    function testRegisterAsConsumer() public{
+    function testRegisterAsConsumer() public {
         vm.prank(USER);
         boutTracker.registerAsConsumer();
         assertEq(boutTracker.isRegistered(USER), true);
@@ -51,16 +47,15 @@ contract BoutTrackerTest is Test{
         assertEq(boutTracker.isSupplier(USER), false);
     }
 
-    function testCantRegisterTwice() public{
+    function testCantRegisterTwice() public {
         vm.startPrank(USER);
         boutTracker.registerAsConsumer();
         vm.expectRevert(BoutTracker.BoutTracker__UserAlreadyRegistered.selector);
         boutTracker.registerAsSupplier();
         vm.stopPrank();
-
     }
 
-    function testRevokeUserRole() public{
+    function testRevokeUserRole() public {
         vm.prank(USER);
         boutTracker.registerAsSupplier();
         vm.prank(owner);
@@ -68,8 +63,7 @@ contract BoutTrackerTest is Test{
         assertEq(uint256(boutTracker.getUserRole(USER)), uint256(UserRole.NONE));
     }
 
-
-    function testSupplierCanCreatePackage() public{
+    function testSupplierCanCreatePackage() public {
         vm.prank(consumer);
         boutTracker.registerAsConsumer();
         vm.startPrank(USER);
@@ -79,16 +73,15 @@ contract BoutTrackerTest is Test{
         assertEq(boutNFT.balanceOf(USER), 1);
     }
 
-    function testConsumerCantCreatePackage() public{
+    function testConsumerCantCreatePackage() public {
         vm.startPrank(USER);
         boutTracker.registerAsConsumer();
         vm.expectRevert(BoutTracker.BoutTracker__OnlySupplierCanAccessFunction.selector);
         boutTracker.createPackage(BOTTLECOUNT_INITIAL, DEFAULT_LINK, consumer);
         vm.stopPrank();
-        
     }
 
-    function testCantCreatePackageWithZeroBottles() public{
+    function testCantCreatePackageWithZeroBottles() public {
         vm.prank(consumer);
         boutTracker.registerAsConsumer();
         vm.startPrank(USER);
@@ -98,7 +91,7 @@ contract BoutTrackerTest is Test{
         vm.stopPrank();
     }
 
-    function testCantCreatePackageWithEmptyLink() public{
+    function testCantCreatePackageWithEmptyLink() public {
         vm.prank(consumer);
         boutTracker.registerAsConsumer();
         vm.startPrank(USER);
@@ -108,7 +101,7 @@ contract BoutTrackerTest is Test{
         vm.stopPrank();
     }
 
-    function testCantCreatePackageIfAddressConsumerEqualZero() public{
+    function testCantCreatePackageIfAddressConsumerEqualZero() public {
         vm.prank(consumer);
         boutTracker.registerAsConsumer();
         vm.startPrank(USER);
@@ -118,7 +111,7 @@ contract BoutTrackerTest is Test{
         vm.stopPrank();
     }
 
-    function testCantCreatePackageIfConsumerNotRegistered() public{
+    function testCantCreatePackageIfConsumerNotRegistered() public {
         vm.startPrank(USER);
         boutTracker.registerAsSupplier();
         vm.expectRevert(BoutTracker.BoutTracker__ConsumerAssignedIsNotRegistered.selector);
@@ -126,7 +119,7 @@ contract BoutTrackerTest is Test{
         vm.stopPrank();
     }
 
-    function testCantCreateDuplicatePackageLink() public{
+    function testCantCreateDuplicatePackageLink() public {
         vm.prank(consumer);
         boutTracker.registerAsConsumer();
         vm.startPrank(USER);
@@ -139,7 +132,7 @@ contract BoutTrackerTest is Test{
 
     // RECEIVE PACKAGE
 
-    modifier PackageSentWithUserToConsumer(){
+    modifier PackageSentWithUserToConsumer() {
         vm.prank(consumer);
         boutTracker.registerAsConsumer();
         vm.startPrank(USER);
@@ -149,20 +142,20 @@ contract BoutTrackerTest is Test{
         _;
     }
 
-    function testConsumerCanReceivePackage() public PackageSentWithUserToConsumer{
+    function testConsumerCanReceivePackage() public PackageSentWithUserToConsumer {
         vm.prank(consumer);
         boutTracker.receivePackage(DEFAULT_LINK);
         assertEq(boutNFT.balanceOf(consumer), 1);
-        assertEq(uint256(boutNFT.getPackageStatus(1)),uint256(BoutNFT.PackageStatus.RECEIVED));
+        assertEq(uint256(boutNFT.getPackageStatus(1)), uint256(BoutNFT.PackageStatus.RECEIVED));
     }
 
-    function testCantReceiveNonExistentPackage() public PackageSentWithUserToConsumer{
+    function testCantReceiveNonExistentPackage() public PackageSentWithUserToConsumer {
         vm.prank(consumer);
         vm.expectRevert(BoutTracker.BootTracker__PackageLinkDoesntExist.selector);
         boutTracker.receivePackage("");
     }
 
-    function testCantReceiveAlreadyReceivedPackage() public PackageSentWithUserToConsumer{
+    function testCantReceiveAlreadyReceivedPackage() public PackageSentWithUserToConsumer {
         vm.startPrank(consumer);
         boutTracker.receivePackage(DEFAULT_LINK);
         vm.expectRevert(BoutTracker.BootTracker__PackageNotAvailable.selector);
@@ -170,14 +163,14 @@ contract BoutTrackerTest is Test{
         vm.stopPrank();
     }
 
-    function testCantReceiveOtherConsumerPackage() public PackageSentWithUserToConsumer{
+    function testCantReceiveOtherConsumerPackage() public PackageSentWithUserToConsumer {
         address consumer2 = makeAddr("consumer2");
         vm.prank(consumer2);
         vm.expectRevert(BoutTracker.BoutTracker__NotIntendedConsumer.selector);
         boutTracker.receivePackage(DEFAULT_LINK);
     }
 
-    modifier PackageReceivedByConsumer(){
+    modifier PackageReceivedByConsumer() {
         vm.prank(consumer);
         boutTracker.registerAsConsumer();
         vm.startPrank(USER);
@@ -188,56 +181,57 @@ contract BoutTrackerTest is Test{
         boutTracker.receivePackage(DEFAULT_LINK);
         _;
     }
-    function testConsumerCanReturnBottles() public PackageReceivedByConsumer{
+
+    function testConsumerCanReturnBottles() public PackageReceivedByConsumer {
         vm.prank(consumer);
         boutTracker.returnBottles(1, BOTTLECOUNT_INITIAL - 1);
         assertEq(boutNFT.getPackage(1).returnedCount, BOTTLECOUNT_INITIAL - 1);
-        assertEq(uint256(boutNFT.getPackageStatus(1)),uint256(BoutNFT.PackageStatus.RETURNED));
+        assertEq(uint256(boutNFT.getPackageStatus(1)), uint256(BoutNFT.PackageStatus.RETURNED));
     }
-    
-    function testCantReturnBottlesIfNotReceived() public PackageSentWithUserToConsumer{
+
+    function testCantReturnBottlesIfNotReceived() public PackageSentWithUserToConsumer {
         vm.prank(consumer);
         vm.expectRevert(BoutTracker.BootTracker__PackageNotReceived.selector);
         boutTracker.returnBottles(1, BOTTLECOUNT_INITIAL - 1);
     }
 
-    function testCantReturnZeroBottles() public PackageReceivedByConsumer{
+    function testCantReturnZeroBottles() public PackageReceivedByConsumer {
         vm.prank(consumer);
         vm.expectRevert(BoutTracker.BootTracker__MustReturnOneBottle.selector);
-        boutTracker.returnBottles(1,0);
+        boutTracker.returnBottles(1, 0);
     }
 
-    function testCantReturnMoreBottlesThanReceived() public PackageReceivedByConsumer{
+    function testCantReturnMoreBottlesThanReceived() public PackageReceivedByConsumer {
         vm.prank(consumer);
         vm.expectRevert(BoutTracker.BootTracker__CantReturnMoreThanReceived.selector);
         boutTracker.returnBottles(1, BOTTLECOUNT_INITIAL + 1);
     }
 
-    function testOnlyAssignedConsumerCanReturnBottles() public PackageReceivedByConsumer{
+    function testOnlyAssignedConsumerCanReturnBottles() public PackageReceivedByConsumer {
         address consumer2 = makeAddr("consumer2");
         vm.prank(consumer2);
         vm.expectRevert(BoutTracker.BoutTracker__NotIntendedConsumer.selector);
-        boutTracker.returnBottles(1,BOTTLECOUNT_INITIAL - 1);
+        boutTracker.returnBottles(1, BOTTLECOUNT_INITIAL - 1);
     }
 
-    function testReturnBottlesCreatePendingRewards() public PackageReceivedByConsumer{
+    function testReturnBottlesCreatePendingRewards() public PackageReceivedByConsumer {
         vm.prank(consumer);
-        boutTracker.returnBottles(1,BOTTLECOUNT_INITIAL - 1);
+        boutTracker.returnBottles(1, BOTTLECOUNT_INITIAL - 1);
         uint256 consumerReward = boutTracker.getRewardPerBottleReturned() * (BOTTLECOUNT_INITIAL - 1);
-        uint256 supplierBonus = (consumerReward * boutTracker.getSupplierBonusRate()) /100;
+        uint256 supplierBonus = (consumerReward * boutTracker.getSupplierBonusRate()) / 100;
 
         assertEq(boutTracker.getPendingRewards(1).consumerReward, consumerReward);
         assertEq(boutTracker.getPendingRewards(1).supplierBonus, supplierBonus);
         assertEq(boutTracker.getPendingRewards(1).claimed, false);
     }
 
-    function testFuzzPendingCalculatesCorrectAmounts(uint256 bottleCount) public PackageReceivedByConsumer{
+    function testFuzzPendingCalculatesCorrectAmounts(uint256 bottleCount) public PackageReceivedByConsumer {
         vm.assume(bottleCount > 0 && bottleCount <= BOTTLECOUNT_INITIAL);
         vm.prank(consumer);
-        boutTracker.returnBottles(1,bottleCount);
+        boutTracker.returnBottles(1, bottleCount);
 
         uint256 consumerReward = boutTracker.getRewardPerBottleReturned() * bottleCount;
-        uint256 supplierBonus = (consumerReward * boutTracker.getSupplierBonusRate()) /100;
+        uint256 supplierBonus = (consumerReward * boutTracker.getSupplierBonusRate()) / 100;
 
         assertEq(boutTracker.getPendingRewards(1).consumerReward, consumerReward);
         assertEq(boutTracker.getPendingRewards(1).supplierBonus, supplierBonus);
@@ -245,7 +239,7 @@ contract BoutTrackerTest is Test{
 
     //CONFIRM RETURN
 
-    modifier PackageReturnedByConsumer(){
+    modifier PackageReturnedByConsumer() {
         vm.prank(consumer);
         boutTracker.registerAsConsumer();
         vm.startPrank(USER);
@@ -259,22 +253,27 @@ contract BoutTrackerTest is Test{
         _;
     }
 
-    function testSupplierCanConfirmReturn() public PackageReturnedByConsumer{
+    function testSupplierCanConfirmReturn() public PackageReturnedByConsumer {
         vm.prank(USER);
         boutTracker.confirmReturn(1);
-        assertEq(uint256(boutNFT.getPackageStatus(1)),uint256(BoutNFT.PackageStatus.CONFIRMED));
+        assertEq(uint256(boutNFT.getPackageStatus(1)), uint256(BoutNFT.PackageStatus.CONFIRMED));
         assertEq(boutTracker.getPendingRewards(1).claimed, true);
-        assertEq(uint256(boutTracker.getWithdrawableRewards(consumer)), uint256(boutTracker.getPendingRewards(1).consumerReward));
-        assertEq(uint256(boutTracker.getWithdrawableRewards(USER)), uint256(boutTracker.getPendingRewards(1).supplierBonus));
+        assertEq(
+            uint256(boutTracker.getWithdrawableRewards(consumer)),
+            uint256(boutTracker.getPendingRewards(1).consumerReward)
+        );
+        assertEq(
+            uint256(boutTracker.getWithdrawableRewards(USER)), uint256(boutTracker.getPendingRewards(1).supplierBonus)
+        );
     }
 
-    function testCantConfirmReturnIfNotReturned() public PackageReceivedByConsumer{
+    function testCantConfirmReturnIfNotReturned() public PackageReceivedByConsumer {
         vm.prank(USER);
         vm.expectRevert(BoutTracker.BootTracker__PackageNotInReturnedState.selector);
         boutTracker.confirmReturn(1);
     }
 
-    function testCantConfirmReturnIfAlreadyClaimed() public PackageReturnedByConsumer{
+    function testCantConfirmReturnIfAlreadyClaimed() public PackageReturnedByConsumer {
         vm.startPrank(USER);
         boutTracker.confirmReturn(1);
         vm.expectRevert(BoutTracker.BoutTracker__RewardsAlreadyClaimed.selector);
@@ -282,13 +281,13 @@ contract BoutTrackerTest is Test{
         vm.stopPrank();
     }
 
-    function testCantConfirmReturnIfNoPendingReward() public PackageReturnedByConsumer{
+    function testCantConfirmReturnIfNoPendingReward() public PackageReturnedByConsumer {
         vm.prank(USER);
     }
 
     //WITHDRAW REWARDS
 
-    modifier PackageConfirmedBySupplier(){
+    modifier PackageConfirmedBySupplier() {
         vm.prank(consumer);
         boutTracker.registerAsConsumer();
         vm.startPrank(USER);
@@ -304,25 +303,27 @@ contract BoutTrackerTest is Test{
         _;
     }
 
-    function testCanWithdrawRewardsAsConsumer() public PackageConfirmedBySupplier{
+    function testCanWithdrawRewardsAsConsumer() public PackageConfirmedBySupplier {
         assertEq(boutTracker.getWithdrawableRewards(consumer), DEFAULT_REWARD_PER_BOTTLE * (BOTTLECOUNT_INITIAL - 1));
         vm.prank(consumer);
         boutTracker.withdrawRewards();
         assertEq(boutTracker.getWithdrawableRewards(consumer), 0);
     }
 
-    function testCanWithdrawRewardsAsSupplier() public PackageConfirmedBySupplier{
-        assertEq(boutTracker.getWithdrawableRewards(USER), (DEFAULT_REWARD_PER_BOTTLE * (BOTTLECOUNT_INITIAL - 1))* DEFAULT_SUPPLIER_BONUS_RATE / 100);
+    function testCanWithdrawRewardsAsSupplier() public PackageConfirmedBySupplier {
+        assertEq(
+            boutTracker.getWithdrawableRewards(USER),
+            (DEFAULT_REWARD_PER_BOTTLE * (BOTTLECOUNT_INITIAL - 1)) * DEFAULT_SUPPLIER_BONUS_RATE / 100
+        );
         vm.prank(USER);
         boutTracker.withdrawRewards();
         assertEq(boutTracker.getWithdrawableRewards(USER), 0);
     }
 
-    function testCantWithdrawRewardsIfNoRewardsToWithdraw() public PackageConfirmedBySupplier{
+    function testCantWithdrawRewardsIfNoRewardsToWithdraw() public PackageConfirmedBySupplier {
         vm.prank(consumer);
         boutTracker.withdrawRewards();
         vm.expectRevert(BoutTracker.BoutTracker__NoRewardsToWithdraw.selector);
         boutTracker.withdrawRewards();
     }
-
 }

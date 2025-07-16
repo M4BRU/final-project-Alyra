@@ -26,8 +26,7 @@ import {ERC20Burnable, ERC20} from "@openzeppelin/contracts/token/ERC20/extensio
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract BoutToken is ERC20Burnable, Ownable{
-
+contract BoutToken is ERC20Burnable, Ownable {
     error BoutToken__AddressNotCorrect();
     error BoutToken__OnlyTrackerCanAccess();
     error BoutToken__AmountNotEnough();
@@ -35,29 +34,25 @@ contract BoutToken is ERC20Burnable, Ownable{
     event TrackerUpdated(address indexed oldTracker, address indexed newTracker);
     event TokensMinted(address indexed to, uint256 amount);
 
-    modifier onlyTracker(){
-        if(msg.sender != tracker)
-        {
+    modifier onlyTracker() {
+        if (msg.sender != tracker) {
             revert BoutToken__OnlyTrackerCanAccess();
-        }
-        else{
+        } else {
             _;
         }
-        
     }
-    
 
     address public tracker;
 
-    constructor(address _tracker) ERC20("BoutToken","BOUT") Ownable(msg.sender){
+    constructor(address _tracker) ERC20("BoutToken", "BOUT") Ownable(msg.sender) {
         tracker = _tracker;
     }
 
-    function mint(address to, uint256 amount) external onlyTracker{
-        if(to == address(0)){
+    function mint(address to, uint256 amount) external onlyTracker {
+        if (to == address(0)) {
             revert BoutToken__AddressNotCorrect();
         }
-        if(amount <= 0){
+        if (amount <= 0) {
             revert BoutToken__AmountNotEnough();
         }
         _mint(to, amount);
@@ -65,9 +60,8 @@ contract BoutToken is ERC20Burnable, Ownable{
         emit TokensMinted(to, amount);
     }
 
-    function setTracker(address _tracker) external onlyOwner{
-        if(_tracker == address(0))
-        {
+    function setTracker(address _tracker) external onlyOwner {
+        if (_tracker == address(0)) {
             revert BoutToken__AddressNotCorrect();
         }
         address oldTracker = tracker;
@@ -75,5 +69,4 @@ contract BoutToken is ERC20Burnable, Ownable{
 
         emit TrackerUpdated(oldTracker, tracker);
     }
-
 }
