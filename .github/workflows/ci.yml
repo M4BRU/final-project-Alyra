@@ -1,0 +1,112 @@
+name: CI BOUT - Smart Contracts
+
+on:
+  push:
+    branches: [main, develop]
+    paths: ["backend/**"]
+  pull_request:
+    branches: [main]
+    paths: ["backend/**"]
+
+jobs:
+  test-contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Cache Foundry dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.foundry/cache
+            ./backend/cache
+            ./backend/out
+          key: foundry-${{ runner.os }}-${{ hashFiles('**/foundry.toml') }}
+          restore-keys: |
+            foundry-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: forge install
+
+      - name: Check formatting
+        run: forge fmt --check
+
+      - name: Build contracts
+        run: forge build --sizes
+
+      - name: Run tests with gas report
+        run: forge test -vvv --gas-report
+
+      - name: Generate detailed coverage report
+        run: |
+          forge coverage --report lcov
+          forge coverage --report summary
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./backend/lcov.info
+          flags: smart-contracts
+          name: smart-contracts-coverage
+          fail_ci_if_error: false
+
+      - name: Comment gas report on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const gasReport = '## ⛽ Gas Report\n\nLes tests ont été exécutés avec succès. Vérifiez les logs pour le détail du gas usage.';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: gasReport
+            });
+
+      - name: Fail if coverage below threshold
+        run: |
+          COVERAGE=$(forge coverage --report summary | grep "Overall coverage" | grep -o '[0-9.]*%' | grep -o '[0-9.]*')
+          echo "Coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "❌ Coverage below 80%: $COVERAGE%"
+            exit 1
+          else
+            echo "✅ Coverage above 80%: $COVERAGE%"
+          fi
+
+  security-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Run Slither static analysis
+        uses: crytic/slither-action@v0.3.0
+        with:
+          target: "backend/src/"
+          slither-config: "backend/slither.config.json"
+          fail-on: none
+          slither-args: "--print human-summary"
