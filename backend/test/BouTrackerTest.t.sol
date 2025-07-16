@@ -15,6 +15,8 @@ contract BoutTrackerTest is Test{
     address consumer = makeAddr("consumer");
     uint256 constant BOTTLECOUNT_INITIAL = 6;
     string constant DEFAULT_LINK = "https://www.alyra.fr";
+    uint256 public constant DEFAULT_REWARD_PER_BOTTLE = 10 * 1e18;
+    uint256 public constant DEFAULT_SUPPLIER_BONUS_RATE = 10;
 
 
     function setUp() external{
@@ -262,12 +264,65 @@ contract BoutTrackerTest is Test{
         boutTracker.confirmReturn(1);
         assertEq(uint256(boutNFT.getPackageStatus(1)),uint256(BoutNFT.PackageStatus.CONFIRMED));
         assertEq(boutTracker.getPendingRewards(1).claimed, true);
+        assertEq(uint256(boutTracker.getWithdrawableRewards(consumer)), uint256(boutTracker.getPendingRewards(1).consumerReward));
+        assertEq(uint256(boutTracker.getWithdrawableRewards(USER)), uint256(boutTracker.getPendingRewards(1).supplierBonus));
     }
 
-    function testCantConfirmReturnIfNotReturned() public PackageReturnedByConsumer{
+    function testCantConfirmReturnIfNotReturned() public PackageReceivedByConsumer{
         vm.prank(USER);
         vm.expectRevert(BoutTracker.BootTracker__PackageNotInReturnedState.selector);
         boutTracker.confirmReturn(1);
+    }
+
+    function testCantConfirmReturnIfAlreadyClaimed() public PackageReturnedByConsumer{
+        vm.startPrank(USER);
+        boutTracker.confirmReturn(1);
+        vm.expectRevert(BoutTracker.BoutTracker__RewardsAlreadyClaimed.selector);
+        boutTracker.confirmReturn(1);
+        vm.stopPrank();
+    }
+
+    function testCantConfirmReturnIfNoPendingReward() public PackageReturnedByConsumer{
+        vm.prank(USER);
+    }
+
+    //WITHDRAW REWARDS
+
+    modifier PackageConfirmedBySupplier(){
+        vm.prank(consumer);
+        boutTracker.registerAsConsumer();
+        vm.startPrank(USER);
+        boutTracker.registerAsSupplier();
+        boutTracker.createPackage(BOTTLECOUNT_INITIAL, DEFAULT_LINK, consumer);
+        vm.stopPrank();
+        vm.prank(consumer);
+        boutTracker.receivePackage(DEFAULT_LINK);
+        vm.prank(consumer);
+        boutTracker.returnBottles(1, BOTTLECOUNT_INITIAL - 1);
+        vm.prank(USER);
+        boutTracker.confirmReturn(1);
+        _;
+    }
+
+    function testCanWithdrawRewardsAsConsumer() public PackageConfirmedBySupplier{
+        assertEq(boutTracker.getWithdrawableRewards(consumer), DEFAULT_REWARD_PER_BOTTLE * (BOTTLECOUNT_INITIAL - 1));
+        vm.prank(consumer);
+        boutTracker.withdrawRewards();
+        assertEq(boutTracker.getWithdrawableRewards(consumer), 0);
+    }
+
+    function testCanWithdrawRewardsAsSupplier() public PackageConfirmedBySupplier{
+        assertEq(boutTracker.getWithdrawableRewards(USER), (DEFAULT_REWARD_PER_BOTTLE * (BOTTLECOUNT_INITIAL - 1))* DEFAULT_SUPPLIER_BONUS_RATE / 100);
+        vm.prank(USER);
+        boutTracker.withdrawRewards();
+        assertEq(boutTracker.getWithdrawableRewards(USER), 0);
+    }
+
+    function testCantWithdrawRewardsIfNoRewardsToWithdraw() public PackageConfirmedBySupplier{
+        vm.prank(consumer);
+        boutTracker.withdrawRewards();
+        vm.expectRevert(BoutTracker.BoutTracker__NoRewardsToWithdraw.selector);
+        boutTracker.withdrawRewards();
     }
 
 }

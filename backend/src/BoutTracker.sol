@@ -80,8 +80,8 @@ contract BoutTracker is Ownable, ReentrancyGuard{
 
     BoutNFT private immutable i_boutNFT;
     BoutToken private immutable i_boutToken;
-    uint256 private s_rewardPerBottleReturned  = 10 * 10e18;
-    uint256 private s_supplierBonusRate = 20;
+    uint256 private s_rewardPerBottleReturned  = 10 * 1e18;
+    uint256 private s_supplierBonusRate = 10;
 
     mapping(address => UserRole) private s_userRoles;
 

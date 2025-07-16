@@ -160,7 +160,7 @@ contract BoutNFT is ERC721, Ownable{
             s_supplierActiveCount[supplier]++;
             s_consumerActiveCount[_consumer]++;
 
-            _mint(supplier, tokenId);
+            _safeMint(supplier, tokenId);
 
             emit PackageCreated(tokenId, supplier, bottleCount, packageLink);
 

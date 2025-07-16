@@ -8,8 +8,8 @@ contract HelperConfig is Script {
     NetworkConfig public activeNetworkConfig;
     
     // Constantes par défaut pour les récompenses
-    uint256 public constant DEFAULT_REWARD_PER_BOTTLE = 10 * 10e18; // 10 BOUT tokens par bouteille
-    uint256 public constant DEFAULT_SUPPLIER_BONUS_RATE = 20; // 20% bonus pour le supplier
+    uint256 public constant DEFAULT_REWARD_PER_BOTTLE = 10 * 1e18; // 10 BOUT tokens par bouteille
+    uint256 public constant DEFAULT_SUPPLIER_BONUS_RATE = 10; // 10% bonus pour le supplier
     uint256 public constant DEFAULT_MAX_ACTIVE_PACKAGES = 50;
     
     struct NetworkConfig {
