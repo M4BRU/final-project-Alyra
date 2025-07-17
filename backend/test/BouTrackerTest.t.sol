@@ -110,6 +110,13 @@ contract BoutTrackerTest is Test {
         boutTracker.revokeUserRole(USER);
     }
 
+
+    function testOnlyOwnerCanRevokeUserRole() public {
+        vm.prank(USER);
+        vm.expectRevert();
+        boutTracker.revokeUserRole(consumer);
+    }
+
     //TEST CREATE PACKAGE
 
     function testSupplierCanCreatePackage() public {
@@ -366,6 +373,13 @@ contract BoutTrackerTest is Test {
         vm.prank(USER);
     }
 
+    function testOnlyAssignedSupplierCanConfirmReturn() public PackageReturnedByConsumer {
+        address otherSupplier = makeAddr("otherSupplier");
+        vm.prank(otherSupplier);
+        vm.expectRevert(BoutTracker.BoutTracker__OnlyAssignedSupplierCanAccessFunction.selector);
+        boutTracker.confirmReturn(1);
+    }
+
     //WITHDRAW REWARDS
 
     modifier PackageConfirmedBySupplier() {
@@ -451,6 +465,16 @@ contract BoutTrackerTest is Test {
         assertEq(boutTracker.getRewardPerBottleReturned(), newReward);
     }
 
+    function testSetRewardPerBottleEmitsEvent() public {
+        uint256 oldReward = DEFAULT_REWARD_PER_BOTTLE;
+        uint256 newReward = 20 * 1e18;
+    
+        vm.expectEmit(false, false, false, true, address(boutTracker));
+        emit RewardPerBottleUpdated(oldReward, newReward);
+        vm.prank(owner);
+        boutTracker.setRewardPerBottle(newReward);
+    }
+
     function testOnlyOwnerCanSetRewardPerBottle() public {
         vm.prank(USER);
         vm.expectRevert();
@@ -464,10 +488,26 @@ contract BoutTrackerTest is Test {
         assertEq(boutTracker.getSupplierBonusRate(), newRate);
     }
 
+    function testSetSupplierBonusRateEmitsEvent() public {
+        uint256 oldRate = DEFAULT_SUPPLIER_BONUS_RATE;
+        uint256 newRate = 15;
+    
+        vm.expectEmit(false, false, false, true, address(boutTracker));
+        emit SupplierBonusRateUpdated(oldRate, newRate);
+        vm.prank(owner);
+        boutTracker.setSupplierBonusRate(newRate);
+    }
+
     function testCantSetSupplierBonusRateAbove100() public {
         vm.prank(owner);
         vm.expectRevert(BoutTracker.BoutTracker__BonusRateCantExceed100.selector);
         boutTracker.setSupplierBonusRate(101);
+    }
+
+    function testOnlyOwnerCanSetSupplierBonusRate() public {
+        vm.prank(USER);
+        vm.expectRevert();
+        boutTracker.setSupplierBonusRate(15);
     }
 
     function testGlobalStatsInitialState() public view {
@@ -524,5 +564,194 @@ contract BoutTrackerTest is Test {
     function testGetTokenIdByLink() public PackageSentWithUserToConsumer {
         assertEq(boutTracker.getTokenIdByLink(DEFAULT_LINK), 1);
         assertEq(boutTracker.getTokenIdByLink("nonexistent"), 0);
+    }
+
+    // ==================== BOUTNFT SPECIFIC TESTS ====================
+
+    function testBoutNFTOnlyTrackerCanCreatePackage() public {
+        vm.prank(consumer);
+        boutTracker.registerAsConsumer();
+    
+        vm.prank(USER);
+        vm.expectRevert(BoutNFT.BoutToken__OnlyTrackerCanAccess.selector);
+        boutNFT.createPackage(USER, BOTTLECOUNT_INITIAL, DEFAULT_LINK, consumer);
+    }
+
+    function testBoutNFTInitialPackageStatus() public PackageSentWithUserToConsumer {
+        assertEq(uint256(boutNFT.getPackageStatus(1)), uint256(BoutNFT.PackageStatus.SENT));
+    }
+
+    function testBoutNFTGetPackageData() public PackageSentWithUserToConsumer {
+        BoutNFT.Package memory package = boutNFT.getPackage(1);
+        assertEq(package.sender, USER);
+        assertEq(package.consumer, consumer);
+        assertEq(package.bottleCount, BOTTLECOUNT_INITIAL);
+        assertEq(package.packageLink, DEFAULT_LINK);
+        assertEq(package.returnedCount, 0);
+        assertEq(uint256(package.status), uint256(BoutNFT.PackageStatus.SENT));
+        assertEq(package.isBanned, false);
+    }
+
+    function testBoutNFTPackageDataAfterReturn() public PackageReturnedByConsumer {
+        BoutNFT.Package memory package = boutNFT.getPackage(1);
+        assertEq(package.returnedCount, BOTTLECOUNT_INITIAL - 1);
+        assertEq(uint256(package.status), uint256(BoutNFT.PackageStatus.RETURNED));
+        assertTrue(package.returnedAt > 0);
+    }
+
+    function testBoutNFTUnauthorizedStatusChange() public PackageSentWithUserToConsumer {
+        vm.prank(makeAddr("unauthorized"));
+        vm.expectRevert(BoutNFT.BoutToken__OnlyTrackerCanAccess.selector);
+        boutNFT.updateStatus(1, BoutNFT.PackageStatus.RECEIVED);
+    }
+
+    function testBoutNFTUnauthorizedReturnedCountChange() public PackageSentWithUserToConsumer {
+        vm.prank(makeAddr("unauthorized"));
+        vm.expectRevert(BoutNFT.BoutToken__OnlyTrackerCanAccess.selector);
+        boutNFT.setReturnedCount(1, 3);
+    }
+
+    function testBoutNFTGetPackageInvalidToken() public {
+        vm.expectRevert(BoutNFT.BoutNFT__TokenNotExist.selector);
+        boutNFT.getPackage(999);
+    }
+
+    function testBoutNFTPackageExists() public PackageSentWithUserToConsumer {
+        assertTrue(boutNFT.packageExists(1));
+        assertFalse(boutNFT.packageExists(999));
+    }
+
+    function testBoutNFTApproveAndTransfer() public PackageSentWithUserToConsumer {
+        address newOwner = makeAddr("newOwner");
+    
+        vm.prank(USER);
+        boutNFT.approve(newOwner, 1);
+        assertEq(boutNFT.getApproved(1), newOwner);
+    
+        vm.prank(newOwner);
+        boutNFT.transferFrom(USER, newOwner, 1);
+        assertEq(boutNFT.ownerOf(1), newOwner);
+    }
+
+    function testBoutNFTIsApprovedForAllTracker() public view {
+        assertTrue(boutNFT.isApprovedForAll(USER, address(boutTracker)));
+    }
+
+    function testBoutNFTGetActiveSupplierPackages() public PackageSentWithUserToConsumer {
+        uint256[] memory activePackages = boutNFT.getActiveSupplierPackages(USER);
+        assertEq(activePackages.length, 1);
+        assertEq(activePackages[0], 1);
+    }
+
+    function testBoutNFTGetActiveConsumerPackages() public PackageSentWithUserToConsumer {
+        uint256[] memory activePackages = boutNFT.getActiveConsumerPackages(consumer);
+        assertEq(activePackages.length, 1);
+        assertEq(activePackages[0], 1);
+    }
+
+    function testBoutNFTGetSupplierPackageCounts() public PackageSentWithUserToConsumer {
+        (uint256 activeCount, uint256 archivedCount, uint256 totalCount) = boutNFT.getSupplierPackageCounts(USER);
+        assertEq(activeCount, 1);
+        assertEq(archivedCount, 0);
+        assertEq(totalCount, 1);
+    }
+
+    function testBoutNFTGetConsumerPackageCounts() public PackageSentWithUserToConsumer {
+        (uint256 activeCount, uint256 archivedCount, uint256 totalCount) = boutNFT.getConsumerPackageCounts(consumer);
+        assertEq(activeCount, 1);
+        assertEq(archivedCount, 0);
+        assertEq(totalCount, 1);
+    }
+
+    function testBoutNFTPackageArchivingAfterConfirm() public PackageConfirmedBySupplier {
+        (uint256 activeCount, uint256 archivedCount, uint256 totalCount) = boutNFT.getSupplierPackageCounts(USER);
+        assertEq(activeCount, 0);
+        assertEq(archivedCount, 1);
+        assertEq(totalCount, 1);
+    }
+
+    function testBoutNFTGetNextTokenId() public view {
+        assertEq(boutNFT.getNextTokenId(), 1);
+    }
+
+    function testBoutNFTGetTracker() public view {
+        assertEq(boutNFT.getTracker(), address(boutTracker));
+    }
+
+    function testBoutNFTSetTrackerOnlyOwner() public {
+        address newTracker = makeAddr("newTracker");
+        vm.prank(boutTracker.owner());
+        boutNFT.setTracker(newTracker);
+        assertEq(boutNFT.getTracker(), newTracker);
+    }
+
+    function testBoutNFTSetTrackerUnauthorized() public {
+        address newTracker = makeAddr("newTracker");
+        vm.prank(USER);
+        vm.expectRevert();
+        boutNFT.setTracker(newTracker);
+    }
+
+    function testBoutNFTGetArchivedSupplierPackages() public PackageConfirmedBySupplier {
+        (uint256[] memory archived, bool hasMore) = boutNFT.getArchivedSupplierPackages(USER, 0, 10);
+        assertEq(archived.length, 1);
+        assertEq(archived[0], 1);
+        assertEq(hasMore, false);
+    }
+
+    function testBoutNFTGetArchivedConsumerPackages() public PackageConfirmedBySupplier {
+        (uint256[] memory archived, bool hasMore) = boutNFT.getArchivedConsumerPackages(consumer, 0, 10);
+        assertEq(archived.length, 1);
+        assertEq(archived[0], 1);
+        assertEq(hasMore, false);
+    }
+
+    function testBoutNFTBanPackage() public PackageSentWithUserToConsumer {
+        vm.prank(address(boutTracker));
+        boutNFT.banPackage(1, "Test ban");
+    
+        assertTrue(boutNFT.isPackageBanned(1));
+        BoutNFT.Package memory package = boutNFT.getPackage(1);
+        assertTrue(package.isBanned);
+    }
+
+    function testBoutNFTUnbanPackage() public PackageSentWithUserToConsumer {
+        vm.prank(address(boutTracker));
+        boutNFT.banPackage(1, "Test ban");
+    
+        vm.prank(address(boutTracker));
+        boutNFT.unbanPackage(1);
+    
+        assertFalse(boutNFT.isPackageBanned(1));
+    }
+
+    function testBoutNFTGetActivePackagesNotBanned() public PackageSentWithUserToConsumer {
+        uint256[] memory activePackages = boutNFT.getActiveSupplierPackagesNotBanned(USER);
+        assertEq(activePackages.length, 1);
+    
+        // Ban the package
+        vm.prank(address(boutTracker));
+        boutNFT.banPackage(1, "Test ban");
+    
+        uint256[] memory activePackagesAfterBan = boutNFT.getActiveSupplierPackagesNotBanned(USER);
+        assertEq(activePackagesAfterBan.length, 0);
+    }
+
+    function testBoutNFTFuzzMultiplePackages(uint8 packageCount) public {
+        vm.assume(packageCount > 0 && packageCount <= 10);
+
+        vm.prank(consumer);
+        boutTracker.registerAsConsumer();
+        vm.startPrank(USER);
+        boutTracker.registerAsSupplier();
+    
+        for (uint8 i = 1; i <= packageCount; i++) {
+        string memory link = string(abi.encodePacked("https://example.com/package", vm.toString(i)));
+        boutTracker.createPackage(BOTTLECOUNT_INITIAL, link, consumer);
+        }
+        vm.stopPrank();
+    
+        assertEq(boutNFT.balanceOf(USER), packageCount);
+        assertEq(boutNFT.getNextTokenId(), packageCount + 1);
     }
 }

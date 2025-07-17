@@ -233,7 +233,10 @@ export default function BoutForm() {
       console.log("=== Fetching BOUT Events ===");
 
       const currentBlock = await publicClient.getBlockNumber();
-      const fromBlock = currentBlock - BigInt(eventRange);
+      const fromBlock =
+        currentBlock > BigInt(eventRange)
+          ? currentBlock - BigInt(eventRange)
+          : 0n;
 
       // Récupérer tous les events en parallèle
       const [

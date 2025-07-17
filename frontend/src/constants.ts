@@ -639,9 +639,15 @@ interface BoutContractsConfig {
 export const chainsToBout: BoutContractsConfig = {
   // Sepolia testnet
   11155111: {
-    tracker: "0x5ab4c5D1c8675eCC405D25B49B9ec0ea1966A46E", // À remplir après déploiement
-    token: "0x1a2c1CDFaCA449C9A420Ec70c4365dBE93a3D829",
-    nft: "0x1F67b61259ed8f5ff6F2437Cd6A6C8BAD31b523C",
+    tracker:
+      process.env.NEXT_PUBLIC_SEPOLIA_TRACKER_ADDRESS ||
+      "0x5ab4c5D1c8675eCC405D25B49B9ec0ea1966A46E",
+    token:
+      process.env.NEXT_PUBLIC_SEPOLIA_TOKEN_ADDRESS ||
+      "0x1a2c1CDFaCA449C9A420Ec70c4365dBE93a3D829",
+    nft:
+      process.env.NEXT_PUBLIC_SEPOLIA_NFT_ADDRESS ||
+      "0x1F67b61259ed8f5ff6F2437Cd6A6C8BAD31b523C",
   },
   // Anvil local - ADRESSES RÉELLES
   31337: {
