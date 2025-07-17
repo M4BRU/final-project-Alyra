@@ -4,12 +4,16 @@ interface BoutEventProps {
   events: BoutEvent[];
   loading?: boolean;
   onRefresh?: () => void;
+  eventRange?: number;
+  onRangeChange?: (range: number) => void;
 }
 
 export default function BoutEvent({
   events,
   loading = false,
   onRefresh,
+  eventRange = 300,
+  onRangeChange,
 }: BoutEventProps) {
   const getBadgeColor = (type: BoutEvent["type"]) => {
     switch (type) {
@@ -63,6 +67,13 @@ export default function BoutEvent({
     return `${hash.slice(0, 8)}...${hash.slice(-6)}`;
   };
 
+  const getTimeEstimate = (blocks: number) => {
+    const minutes = Math.round((blocks * 12) / 60); // ~12 secondes par bloc
+    if (minutes < 60) return `~${minutes}min`;
+    const hours = Math.round(minutes / 60);
+    return `~${hours}h`;
+  };
+
   if (loading) {
     return (
       <div className="bg-white p-6 rounded-lg border">
@@ -82,20 +93,42 @@ export default function BoutEvent({
       <div className="bg-white p-6 rounded-lg border">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">📈 Activité Récente</h2>
-          {onRefresh && (
-            <button
-              onClick={onRefresh}
-              className="text-blue-500 hover:text-blue-700 text-sm font-medium"
-            >
-              🔄 Actualiser
-            </button>
-          )}
+          <div className="flex items-center space-x-2">
+            {/* ✅ Contrôles de plage */}
+            {onRangeChange && (
+              <select
+                value={eventRange}
+                onChange={(e) => onRangeChange(Number(e.target.value))}
+                className="text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:border-blue-400 focus:border-blue-500 focus:outline-none"
+              >
+                <option value={100}>100 blocs ({getTimeEstimate(100)})</option>
+                <option value={200}>200 blocs ({getTimeEstimate(200)})</option>
+                <option value={300}>300 blocs ({getTimeEstimate(300)})</option>
+                <option value={400}>400 blocs ({getTimeEstimate(400)})</option>
+              </select>
+            )}
+
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                disabled={loading}
+                className="text-blue-500 hover:text-blue-700 text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                🔄 Actualiser
+              </button>
+            )}
+          </div>
         </div>
+
         <div className="text-center p-8 bg-gray-50 rounded-lg">
           <div className="text-4xl mb-2">📭</div>
           <div className="text-gray-600 font-medium">Aucun événement</div>
           <div className="text-sm text-gray-500 mt-1">
             Les activités apparaîtront ici au fur et à mesure
+          </div>
+          <div className="text-xs text-gray-400 mt-2">
+            Recherche dans les {eventRange} derniers blocs (
+            {getTimeEstimate(eventRange)})
           </div>
         </div>
       </div>
@@ -107,16 +140,49 @@ export default function BoutEvent({
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">📈 Activité Récente</h2>
         <div className="flex items-center space-x-3">
+          {/* ✅ Contrôles de plage */}
+          {onRangeChange && (
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-gray-500">Plage:</span>
+              <select
+                value={eventRange}
+                onChange={(e) => onRangeChange(Number(e.target.value))}
+                className="text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:border-blue-400 focus:border-blue-500 focus:outline-none"
+              >
+                <option value={100}>100 blocs ({getTimeEstimate(100)})</option>
+                <option value={200}>200 blocs ({getTimeEstimate(200)})</option>
+                <option value={300}>300 blocs ({getTimeEstimate(300)})</option>
+                <option value={400}>400 blocs ({getTimeEstimate(400)})</option>
+              </select>
+            </div>
+          )}
+
           <span className="text-sm text-gray-500">
             {events.length} événement{events.length > 1 ? "s" : ""}
           </span>
+
           {onRefresh && (
             <button
               onClick={onRefresh}
-              className="text-blue-500 hover:text-blue-700 text-sm font-medium"
+              disabled={loading}
+              className="text-blue-500 hover:text-blue-700 text-sm font-medium transition-colors disabled:opacity-50"
             >
-              🔄 Actualiser
+              {loading ? "🔄 Chargement..." : "🔄 Actualiser"}
             </button>
+          )}
+        </div>
+      </div>
+
+      {/* ✅ Info sur la plage actuelle */}
+      <div className="mb-4 p-2 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="text-xs text-blue-700">
+          📊 Affichage des événements des {eventRange} derniers blocs (
+          {getTimeEstimate(eventRange)})
+          {events.length > 0 && (
+            <span className="ml-2">
+              • Plus récent: bloc #
+              {Math.max(...events.map((e) => e.blockNumber))}
+            </span>
           )}
         </div>
       </div>
@@ -252,7 +318,7 @@ export default function BoutEvent({
         <div className="text-center mt-4 pt-4 border-t border-gray-200">
           <div className="text-sm text-gray-500">
             Affichage des {Math.min(events.length, 50)} événements les plus
-            récents
+            récents dans la plage sélectionnée
           </div>
         </div>
       )}

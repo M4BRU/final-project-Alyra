@@ -76,6 +76,7 @@ export default function BoutForm() {
   const [packages, setPackages] = useState<PackageType[]>([]);
   const [loadingPackages, setLoadingPackages] = useState(false);
   const [refreshCount, setRefreshCount] = useState(0);
+  const [eventRange, setEventRange] = useState<number>(300);
 
   // États spécifiques à BOUT
   const [userRole, setUserRole] = useState<"SUPPLIER" | "CONSUMER" | null>(
@@ -227,8 +228,12 @@ export default function BoutForm() {
     if (!boutTrackerAddress) return;
 
     setLoadingEvents(true);
+
     try {
       console.log("=== Fetching BOUT Events ===");
+
+      const currentBlock = await publicClient.getBlockNumber();
+      const fromBlock = currentBlock - BigInt(eventRange);
 
       // Récupérer tous les events en parallèle
       const [
@@ -246,7 +251,7 @@ export default function BoutForm() {
           event: parseAbiItem(
             "event SupplierRegistered(address indexed addressSupplier)"
           ),
-          fromBlock: 0n,
+          fromBlock: fromBlock,
           toBlock: "latest",
         }),
         // ConsumerRegistered events
@@ -255,7 +260,7 @@ export default function BoutForm() {
           event: parseAbiItem(
             "event ConsumerRegistered(address indexed addressConsumer)"
           ),
-          fromBlock: 0n,
+          fromBlock: fromBlock,
           toBlock: "latest",
         }),
         // PackageCreated events
@@ -264,7 +269,7 @@ export default function BoutForm() {
           event: parseAbiItem(
             "event PackageCreated(uint256 indexed tokenId, address indexed supplier, uint256 bottleCount, string packageLink)"
           ),
-          fromBlock: 0n,
+          fromBlock: fromBlock,
           toBlock: "latest",
         }),
         // PackageReceived events
@@ -273,7 +278,7 @@ export default function BoutForm() {
           event: parseAbiItem(
             "event PackageReceived(uint256 indexed tokenId, address indexed consumer, address indexed supplier)"
           ),
-          fromBlock: 0n,
+          fromBlock: fromBlock,
           toBlock: "latest",
         }),
         // BottlesReturnedPending events
@@ -282,7 +287,7 @@ export default function BoutForm() {
           event: parseAbiItem(
             "event BottlesReturnedPending(uint256 indexed tokenId, address indexed consumer, address indexed supplier, uint256 pendingConsumerReward, uint256 pendingSupplierBonus)"
           ),
-          fromBlock: 0n,
+          fromBlock: fromBlock,
           toBlock: "latest",
         }),
         // RewardsAllocated events
@@ -291,7 +296,7 @@ export default function BoutForm() {
           event: parseAbiItem(
             "event RewardsAllocated(uint256 indexed tokenId, address indexed consumer, uint256 consumerReward, address indexed supplier, uint256 supplierBonus)"
           ),
-          fromBlock: 0n,
+          fromBlock: fromBlock,
           toBlock: "latest",
         }),
         // RewardsWithdrawn events
@@ -300,7 +305,7 @@ export default function BoutForm() {
           event: parseAbiItem(
             "event RewardsWithdrawn(address indexed user, uint256 amount)"
           ),
-          fromBlock: 0n,
+          fromBlock: fromBlock,
           toBlock: "latest",
         }),
       ]);
@@ -377,7 +382,7 @@ export default function BoutForm() {
     } finally {
       setLoadingEvents(false);
     }
-  }, [boutTrackerAddress, publicClient]);
+  }, [boutTrackerAddress, publicClient, eventRange]);
 
   // Fonction de refresh globale
   const refetchAll = useCallback(async () => {
@@ -496,6 +501,8 @@ export default function BoutForm() {
         events={events}
         loading={loadingEvents}
         onRefresh={getEvents}
+        eventRange={eventRange}
+        onRangeChange={setEventRange}
       />
     </div>
   );
