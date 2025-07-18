@@ -328,21 +328,6 @@ export default function ReceivePackage({
           tokens
         </div>
       </div>
-
-      {/* Exemples de liens pour tester */}
-      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
-        <div className="text-sm font-medium text-blue-800 mb-2">
-          🧪 Liens d'exemple pour tester :
-        </div>
-        <div className="text-xs text-blue-700 space-y-1">
-          <div>• package-123-abc</div>
-          <div>• bottle-456-def</div>
-          <div>• emballage-789-ghi</div>
-        </div>
-        <div className="text-xs text-blue-600 mt-2">
-          (Ces liens doivent avoir été créés par un supplier d'abord)
-        </div>
-      </div>
     </div>
   );
 }

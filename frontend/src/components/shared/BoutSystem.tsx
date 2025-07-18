@@ -61,7 +61,7 @@ export type PackageType = {
   returnedAt?: number;
 };
 
-export default function BoutForm() {
+export default function BoutSystem() {
   const chainId = useChainId();
   const config = useConfig();
   const publicClient = usePublicClient();
@@ -432,7 +432,7 @@ export default function BoutForm() {
   // Interface principale
   return (
     <div className="space-y-6">
-      {/* ✅ HEADER AVEC TOKEN BALANCE TEMPS RÉEL */}
+      {/* ✅ HEADER AVEC TOKEN BALANCE TEMPS RÉEL + BOUTON STATS */}
       <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg border border-green-200">
         <div className="flex items-center justify-between">
           <div>
@@ -460,8 +460,19 @@ export default function BoutForm() {
               </div>
             </div>
           </div>
-          <div className="text-4xl">
-            {userRole === "SUPPLIER" ? "🏭" : "👤"}
+          <div className="flex items-center space-x-4">
+            {/* Bouton Statistiques */}
+            <a
+              href="/stats"
+              className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 text-sm font-medium"
+            >
+              <span>📊</span>
+              <span>Statistiques</span>
+            </a>
+            {/* Icône du rôle */}
+            <div className="text-4xl">
+              {userRole === "SUPPLIER" ? "🏭" : "👤"}
+            </div>
           </div>
         </div>
       </div>
