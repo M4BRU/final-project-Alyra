@@ -180,6 +180,7 @@ contract BoutTracker is Ownable, ReentrancyGuard {
      * @custom:requirements User must not already be registered
      * @custom:emits ConsumerRegistered
      */
+
     function registerAsConsumer() external {
         if (s_userRoles[msg.sender] != UserRole.NONE) {
             revert BoutTracker__UserAlreadyRegistered();
@@ -196,6 +197,7 @@ contract BoutTracker is Ownable, ReentrancyGuard {
      * @custom:access onlyOwner
      * @custom:emits UserRoleRevoked
      */
+
     function revokeUserRole(address user) external onlyOwner {
         UserRole oldRole = s_userRoles[user];
         s_userRoles[user] = UserRole.NONE;

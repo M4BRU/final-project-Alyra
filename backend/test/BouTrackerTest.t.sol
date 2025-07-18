@@ -110,7 +110,6 @@ contract BoutTrackerTest is Test {
         boutTracker.revokeUserRole(USER);
     }
 
-
     function testOnlyOwnerCanRevokeUserRole() public {
         vm.prank(USER);
         vm.expectRevert();
@@ -468,7 +467,7 @@ contract BoutTrackerTest is Test {
     function testSetRewardPerBottleEmitsEvent() public {
         uint256 oldReward = DEFAULT_REWARD_PER_BOTTLE;
         uint256 newReward = 20 * 1e18;
-    
+
         vm.expectEmit(false, false, false, true, address(boutTracker));
         emit RewardPerBottleUpdated(oldReward, newReward);
         vm.prank(owner);
@@ -491,7 +490,7 @@ contract BoutTrackerTest is Test {
     function testSetSupplierBonusRateEmitsEvent() public {
         uint256 oldRate = DEFAULT_SUPPLIER_BONUS_RATE;
         uint256 newRate = 15;
-    
+
         vm.expectEmit(false, false, false, true, address(boutTracker));
         emit SupplierBonusRateUpdated(oldRate, newRate);
         vm.prank(owner);
@@ -571,7 +570,7 @@ contract BoutTrackerTest is Test {
     function testBoutNFTOnlyTrackerCanCreatePackage() public {
         vm.prank(consumer);
         boutTracker.registerAsConsumer();
-    
+
         vm.prank(USER);
         vm.expectRevert(BoutNFT.BoutToken__OnlyTrackerCanAccess.selector);
         boutNFT.createPackage(USER, BOTTLECOUNT_INITIAL, DEFAULT_LINK, consumer);
@@ -623,11 +622,11 @@ contract BoutTrackerTest is Test {
 
     function testBoutNFTApproveAndTransfer() public PackageSentWithUserToConsumer {
         address newOwner = makeAddr("newOwner");
-    
+
         vm.prank(USER);
         boutNFT.approve(newOwner, 1);
         assertEq(boutNFT.getApproved(1), newOwner);
-    
+
         vm.prank(newOwner);
         boutNFT.transferFrom(USER, newOwner, 1);
         assertEq(boutNFT.ownerOf(1), newOwner);
@@ -709,7 +708,7 @@ contract BoutTrackerTest is Test {
     function testBoutNFTBanPackage() public PackageSentWithUserToConsumer {
         vm.prank(address(boutTracker));
         boutNFT.banPackage(1, "Test ban");
-    
+
         assertTrue(boutNFT.isPackageBanned(1));
         BoutNFT.Package memory package = boutNFT.getPackage(1);
         assertTrue(package.isBanned);
@@ -718,21 +717,21 @@ contract BoutTrackerTest is Test {
     function testBoutNFTUnbanPackage() public PackageSentWithUserToConsumer {
         vm.prank(address(boutTracker));
         boutNFT.banPackage(1, "Test ban");
-    
+
         vm.prank(address(boutTracker));
         boutNFT.unbanPackage(1);
-    
+
         assertFalse(boutNFT.isPackageBanned(1));
     }
 
     function testBoutNFTGetActivePackagesNotBanned() public PackageSentWithUserToConsumer {
         uint256[] memory activePackages = boutNFT.getActiveSupplierPackagesNotBanned(USER);
         assertEq(activePackages.length, 1);
-    
+
         // Ban the package
         vm.prank(address(boutTracker));
         boutNFT.banPackage(1, "Test ban");
-    
+
         uint256[] memory activePackagesAfterBan = boutNFT.getActiveSupplierPackagesNotBanned(USER);
         assertEq(activePackagesAfterBan.length, 0);
     }
@@ -744,13 +743,13 @@ contract BoutTrackerTest is Test {
         boutTracker.registerAsConsumer();
         vm.startPrank(USER);
         boutTracker.registerAsSupplier();
-    
+
         for (uint8 i = 1; i <= packageCount; i++) {
-        string memory link = string(abi.encodePacked("https://example.com/package", vm.toString(i)));
-        boutTracker.createPackage(BOTTLECOUNT_INITIAL, link, consumer);
+            string memory link = string(abi.encodePacked("https://example.com/package", vm.toString(i)));
+            boutTracker.createPackage(BOTTLECOUNT_INITIAL, link, consumer);
         }
         vm.stopPrank();
-    
+
         assertEq(boutNFT.balanceOf(USER), packageCount);
         assertEq(boutNFT.getNextTokenId(), packageCount + 1);
     }
