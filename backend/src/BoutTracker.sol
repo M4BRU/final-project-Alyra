@@ -159,7 +159,12 @@ contract BoutTracker is Ownable, ReentrancyGuard {
     }
 
     // ========== USER REGISTRATION ==========
-
+    /**
+     * @notice Registers the calling address as a supplier in the BOUT system
+     * @dev Changes user role from NONE to SUPPLIER
+     * @custom:requirements User must not already be registered
+     * @custom:emits SupplierRegistered
+     */
     function registerAsSupplier() external {
         if (s_userRoles[msg.sender] != UserRole.NONE) {
             revert BoutTracker__UserAlreadyRegistered();
@@ -169,7 +174,12 @@ contract BoutTracker is Ownable, ReentrancyGuard {
 
         emit SupplierRegistered(msg.sender);
     }
-
+    /**
+     * @notice Registers the calling address as a consumer in the BOUT system
+     * @dev Changes user role from NONE to CONSUMER
+     * @custom:requirements User must not already be registered
+     * @custom:emits ConsumerRegistered
+     */
     function registerAsConsumer() external {
         if (s_userRoles[msg.sender] != UserRole.NONE) {
             revert BoutTracker__UserAlreadyRegistered();
@@ -179,7 +189,13 @@ contract BoutTracker is Ownable, ReentrancyGuard {
 
         emit ConsumerRegistered(msg.sender);
     }
-
+    /**
+     * @notice Revokes a user's role (admin function only)
+     * @param user The address of the user whose role will be revoked
+     * @dev Resets role to NONE, accessible only by contract owner
+     * @custom:access onlyOwner
+     * @custom:emits UserRoleRevoked
+     */
     function revokeUserRole(address user) external onlyOwner {
         UserRole oldRole = s_userRoles[user];
         s_userRoles[user] = UserRole.NONE;
@@ -188,7 +204,18 @@ contract BoutTracker is Ownable, ReentrancyGuard {
     }
 
     // ========== SUPPLIER FUNCTIONS ==========
-
+    /**
+     * @notice Creates a new bottle package with unique QR code
+     * @param bottleCount Number of bottles in the package (must be > 0)
+     * @param packageLink Unique QR link for the package (cannot be empty)
+     * @param intendedConsumer Address of the consumer assigned to this package
+     * @return tokenId The unique identifier of the created NFT package
+     * @dev Mints a BoutNFT, updates supplier and global statistics
+     * @custom:access onlySupplier
+     * @custom:requirements Assigned consumer must be registered
+     * @custom:requirements QR link must be unique
+     * @custom:emits PackageCreated
+     */
     function createPackage(uint256 bottleCount, string memory packageLink, address intendedConsumer)
         external
         onlySupplier
@@ -229,6 +256,14 @@ contract BoutTracker is Ownable, ReentrancyGuard {
 
     // ========== CONSUMER FUNCTIONS ==========
 
+    /**
+     * @notice Allows a consumer to receive a package via QR scan
+     * @param packageLink The QR link of the package to receive
+     * @dev Transfers NFT from supplier to consumer, changes status to RECEIVED
+     * @custom:requirements Package must be in SENT state
+     * @custom:requirements Only the assigned consumer can receive the package
+     * @custom:emits PackageReceived
+     */
     function receivePackage(string memory packageLink) external {
         uint256 tokenId = s_linkToTokenId[packageLink];
         if (tokenId == 0) {
@@ -255,6 +290,16 @@ contract BoutTracker is Ownable, ReentrancyGuard {
         emit PackageReceived(tokenId, msg.sender, pkg.sender);
     }
 
+    /**
+     * @notice Declares the return of empty bottles by a consumer
+     * @param tokenId The identifier of the returned package NFT
+     * @param returnedCount Number of bottles returned (≤ initial bottleCount)
+     * @dev Calculates escrow rewards, transfers NFT to supplier
+     * @custom:requirements Package must be in RECEIVED state
+     * @custom:requirements Only the assigned consumer can return
+     * @custom:requirements returnedCount must be > 0 and ≤ bottleCount
+     * @custom:emits BottlesReturnedPending
+     */
     function returnBottles(uint256 tokenId, uint256 returnedCount) external {
         BoutNFT.Package memory pkg = i_boutNFT.getPackage(tokenId);
         if (pkg.consumer != msg.sender) {
@@ -290,6 +335,14 @@ contract BoutTracker is Ownable, ReentrancyGuard {
         emit BottlesReturnedPending(tokenId, msg.sender, pkg.sender, consumerReward, supplierBonus);
     }
 
+    /**
+     * @notice Confirms bottle return by a consumer
+     * @param tokenId The identifier of the package NFT to confirm
+     * @dev Transfers pending rewards to withdrawable, finalizes the package
+     * @custom:access Only the assigned supplier can confirm
+     * @custom:requirements Package must be in RETURNED state
+     * @custom:emits RewardsAllocated
+     */
     function confirmReturn(uint256 tokenId) external {
         BoutNFT.Package memory pkg = i_boutNFT.getPackage(tokenId);
         if (pkg.sender != msg.sender) {
@@ -318,6 +371,13 @@ contract BoutTracker is Ownable, ReentrancyGuard {
         emit RewardsAllocated(tokenId, pkg.consumer, rewards.consumerReward, pkg.sender, rewards.supplierBonus);
     }
 
+    /**
+     * @notice Withdraws accumulated BOUT rewards for the user
+     * @dev Mints corresponding BOUT tokens and resets withdrawable balance
+     * @custom:security ReentrancyGuard applied to prevent attacks
+     * @custom:requirements User must have rewards > 0
+     * @custom:emits RewardsWithdrawn
+     */
     function withdrawRewards() external nonReentrant {
         uint256 amount = s_withdrawableRewards[msg.sender];
         if (amount <= 0) {
@@ -349,12 +409,27 @@ contract BoutTracker is Ownable, ReentrancyGuard {
 
     // ========== ADMIN FUNCTIONS ==========
 
+    /**
+     * @notice Modifies the reward per returned bottle (admin function)
+     * @param _rewardPerBottle New reward in wei (e.g., 10 * 1e18 = 10 BOUT)
+     * @dev Affects all new returns, not existing pending returns
+     * @custom:access onlyOwner
+     * @custom:emits RewardPerBottleUpdated
+     */
     function setRewardPerBottle(uint256 _rewardPerBottle) external onlyOwner {
         uint256 oldReward = s_rewardPerBottleReturned;
         s_rewardPerBottleReturned = _rewardPerBottle;
         emit RewardPerBottleUpdated(oldReward, _rewardPerBottle); //plus tard DAO ?
     }
 
+    /**
+     * @notice Modifies the supplier bonus rate (admin function)
+     * @param _bonusRate New bonus rate as percentage (max 100)
+     * @dev Bonus is calculated on consumer reward (e.g., 10% of 50 BOUT = 5 BOUT)
+     * @custom:access onlyOwner
+     * @custom:requirements _bonusRate must be ≤ 100
+     * @custom:emits SupplierBonusRateUpdated
+     */
     function setSupplierBonusRate(uint256 _bonusRate) external onlyOwner {
         if (_bonusRate > 100) {
             revert BoutTracker__BonusRateCantExceed100();
@@ -374,6 +449,14 @@ contract BoutTracker is Ownable, ReentrancyGuard {
         emit EmergencyStatusUpdate(tokenId, status);
     }
 
+    /**
+     * @notice Bans all active packages from a malicious supplier
+     * @param maliciousSupplier Address of the supplier to ban
+     * @param reason Reason for the ban for traceability
+     * @dev Bans all active packages via BoutNFT.banPackage()
+     * @custom:access onlyOwner
+     * @custom:emits MaliciousSupplierBanned
+     */
     function banSupplierPackages(address maliciousSupplier, string memory reason) external onlyOwner {
         uint256[] memory activePackages = i_boutNFT.getActiveSupplierPackages(maliciousSupplier);
 
@@ -384,6 +467,15 @@ contract BoutTracker is Ownable, ReentrancyGuard {
         emit MaliciousSupplierBanned(maliciousSupplier, activePackages.length, reason);
     }
 
+    /**
+     * @notice Returns global statistics of the BOUT system
+     * @return totalPackages Total number of packages created
+     * @return totalBottlesCirculation Total number of bottles in circulation
+     * @return totalBottlesReturned Total number of bottles returned
+     * @return totalRewards Total amount of rewards distributed (in wei)
+     * @return globalReturnRate Global return rate as percentage (0-100)
+     * @dev Calculates return rate as (bottlesReturned * 100) / bottlesCirculation
+     */
     function getGlobalStats()
         external
         view
