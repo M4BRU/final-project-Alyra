@@ -9,17 +9,6 @@ import {
 import { chainsToBout, boutTrackerAbi, boutTokenAbi } from "@/constants";
 import { useChainId, useAccount } from "wagmi";
 
-// ==========================================
-// COURS : Props et Types
-// ==========================================
-
-/**
- * LEÇON 1 : Props du composant
- *
- * - onTokensWithdrawn: Callback pour notifier le parent que des tokens ont été retirés
- * - refetch: Fonction pour rafraîchir les données après retrait
- */
-
 export interface WithdrawTokensProps {
   onTokensWithdrawn: () => void;
   refetch: () => void;
@@ -34,11 +23,6 @@ export default function WithdrawTokens({
   const boutTrackerAddress = chainsToBout[chainId]?.tracker;
   const boutTokenAddress = chainsToBout[chainId]?.token;
 
-  // ==========================================
-  // COURS : Hooks de lecture blockchain
-  // ==========================================
-
-  // Balance actuel de tokens (lecture directe)
   const {
     data: rawBalance,
     isLoading: isLoadingBalance,
@@ -53,7 +37,6 @@ export default function WithdrawTokens({
     },
   });
 
-  // Récompenses retirables (lecture directe)
   const {
     data: rawWithdrawableRewards,
     isLoading: isLoadingRewards,
@@ -68,23 +51,14 @@ export default function WithdrawTokens({
     },
   });
 
-  // ==========================================
-  // COURS : États du composant
-  // ==========================================
-
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [error, setError] = useState<string>("");
 
-  // Conversion des valeurs wei → tokens
   const currentBalance = rawBalance ? Number(rawBalance) / 1e18 : 0;
   const withdrawableRewards = rawWithdrawableRewards
     ? Number(rawWithdrawableRewards) / 1e18
     : 0;
   const isLoading = isLoadingBalance || isLoadingRewards;
-
-  // ==========================================
-  // COURS : Hooks wagmi pour les transactions
-  // ==========================================
 
   const {
     writeContract,
@@ -98,24 +72,9 @@ export default function WithdrawTokens({
     isSuccess: isConfirmed,
     isError: isTransactionError,
     error: transactionError,
-  } = useWaitForTransactionReceipt({
-    hash,
-  });
-
-  // ==========================================
-  // COURS : Fonction de retrait
-  // ==========================================
-
-  /**
-   * LEÇON 4 : Retrait des récompenses
-   *
-   * withdrawRewards() - fonction sans paramètres
-   */
+  } = useWaitForTransactionReceipt({ hash });
 
   const handleWithdrawRewards = async () => {
-    console.log("=== WithdrawRewards Debug ===");
-    console.log("withdrawableRewards:", withdrawableRewards);
-
     if (withdrawableRewards <= 0) {
       setError("Aucune récompense à retirer");
       return;
@@ -130,70 +89,34 @@ export default function WithdrawTokens({
       setIsWithdrawing(true);
       setError("");
 
-      console.log("Calling withdrawRewards");
-
-      // Appel de la fonction withdrawRewards du smart contract
       await writeContract({
         address: boutTrackerAddress as `0x${string}`,
         abi: boutTrackerAbi,
         functionName: "withdrawRewards",
-        args: [], // Pas d'arguments
+        args: [],
       });
-
-      console.log("Transaction submitted successfully");
     } catch (err: any) {
-      console.error("=== ERROR WithdrawRewards ===");
-      console.error("Full error:", err);
-      console.error("Error message:", err.message);
-      console.error("========================");
-
       setError(err.message || "Erreur lors du retrait des récompenses");
       setIsWithdrawing(false);
     }
   };
 
-  // ==========================================
-  // COURS : Effects et reset
-  // ==========================================
-
-  // Reset après succès de transaction
   useEffect(() => {
     if (isConfirmed) {
-      console.log("WithdrawTokens: Retrait confirmé avec succès!");
       setIsWithdrawing(false);
-
-      // Rafraîchir les données directement avec wagmi
       refetchBalance();
       refetchRewards();
-
-      // Notifier le parent
       onTokensWithdrawn();
       refetch();
     }
   }, [isConfirmed, refetchBalance, refetchRewards, onTokensWithdrawn, refetch]);
 
-  // Debug: Log des valeurs en temps réel
-  useEffect(() => {
-    console.log("=== WithdrawTokens Data Debug ===");
-    console.log("rawBalance:", rawBalance);
-    console.log("rawWithdrawableRewards:", rawWithdrawableRewards);
-    console.log("currentBalance:", currentBalance);
-    console.log("withdrawableRewards:", withdrawableRewards);
-    console.log("=================================");
-  }, [rawBalance, rawWithdrawableRewards, currentBalance, withdrawableRewards]);
-
-  // État de loading global
   const isTransactionLoading = isWriting || isConfirming || isWithdrawing;
-
-  // ==========================================
-  // COURS : Interface utilisateur
-  // ==========================================
 
   return (
     <div className="bg-green-50 p-6 rounded-lg">
       <h2 className="text-xl font-semibold mb-4">💰 Mes Tokens BOUT</h2>
 
-      {/* Loading state */}
       {isLoading ? (
         <div className="text-center p-6">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-green-500 border-t-transparent mx-auto mb-4"></div>
@@ -201,9 +124,7 @@ export default function WithdrawTokens({
         </div>
       ) : (
         <>
-          {/* Affichage des balances */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            {/* Balance actuel */}
             <div className="bg-white p-4 rounded-lg border border-green-200">
               <div className="flex items-center space-x-3">
                 <div className="bg-green-100 p-2 rounded-full">
@@ -218,7 +139,6 @@ export default function WithdrawTokens({
               </div>
             </div>
 
-            {/* Récompenses disponibles */}
             <div className="bg-white p-4 rounded-lg border border-orange-200">
               <div className="flex items-center space-x-3">
                 <div className="bg-orange-100 p-2 rounded-full">
@@ -236,14 +156,12 @@ export default function WithdrawTokens({
             </div>
           </div>
 
-          {/* Section de retrait */}
           {withdrawableRewards > 0 ? (
             <div className="bg-white p-6 rounded-lg border border-green-200">
               <h3 className="font-medium text-gray-800 mb-4">
                 🚀 Retirer mes récompenses
               </h3>
 
-              {/* Affichage des erreurs */}
               {(error || writeError) && (
                 <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                   <div className="text-red-700">
@@ -256,7 +174,6 @@ export default function WithdrawTokens({
                 <div>
                   <div className="font-medium text-green-800">
                     Vous pouvez retirer {withdrawableRewards.toFixed(2)} BOUT
-                    tokens
                   </div>
                   <div className="text-sm text-green-600">
                     Ces récompenses proviennent de vos retours de bouteilles
@@ -266,7 +183,6 @@ export default function WithdrawTokens({
                 <div className="text-2xl">💎</div>
               </div>
 
-              {/* Bouton de retrait */}
               <button
                 onClick={handleWithdrawRewards}
                 disabled={isTransactionLoading || withdrawableRewards <= 0}
@@ -305,7 +221,6 @@ export default function WithdrawTokens({
             </div>
           )}
 
-          {/* Statut de la transaction */}
           {hash && (
             <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
               <div className="text-green-700 text-sm">
@@ -356,7 +271,6 @@ export default function WithdrawTokens({
         </>
       )}
 
-      {/* Info utile */}
       <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded">
         <div>
           <strong>💡 Comment ça marche :</strong>

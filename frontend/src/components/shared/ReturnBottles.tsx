@@ -12,18 +12,6 @@ import { useChainId, useAccount } from "wagmi";
 import { readContract } from "@wagmi/core";
 import { Address } from "viem";
 
-// ==========================================
-// COURS : Props et Types
-// ==========================================
-
-/**
- * LEÇON 1 : Props du composant
- *
- * - onBottlesReturned: Callback pour notifier le parent que des bouteilles ont été retournées
- * - refetch: Fonction pour rafraîchir les données après retour
- * - userPackages: Liste des packages que l'utilisateur peut retourner
- */
-
 export interface ReturnBottlesProps {
   onBottlesReturned: () => void;
   refetch: () => void;
@@ -32,7 +20,7 @@ export interface ReturnBottlesProps {
     bottleCount: number;
     status: number;
     rewardAmount: number;
-    packageLink: string; // ✅ Ajouté
+    packageLink: string;
   }>;
 }
 
@@ -52,27 +40,10 @@ export default function ReturnBottles({
     functionName: "getRewardPerBottleReturned",
   });
 
-  // ==========================================
-  // COURS : États du formulaire
-  // ==========================================
-
-  /**
-   * LEÇON 2 : États pour le retour de bouteilles
-   *
-   * - selectedPackageId: ID du package sélectionné pour retour
-   * - returnedCount: Nombre de bouteilles à retourner
-   * - isReturning: État de loading pendant transaction
-   * - error: Gestion des erreurs
-   */
-
   const [selectedPackageId, setSelectedPackageId] = useState<string>("");
   const [returnedCount, setReturnedCount] = useState<string>("");
   const [isReturning, setIsReturning] = useState(false);
   const [error, setError] = useState<string>("");
-
-  // ==========================================
-  // COURS : Hooks wagmi pour les transactions
-  // ==========================================
 
   const {
     writeContract,
@@ -90,27 +61,12 @@ export default function ReturnBottles({
     hash,
   });
 
-  // ==========================================
-  // COURS : Logique métier
-  // ==========================================
-
-  /**
-   * LEÇON 3 : Filtrer les packages retournables
-   *
-   * Seuls les packages avec status RECEIVED (1) peuvent être retournés
-   */
-
-  const returnablePackages = userPackages.filter((pkg) => pkg.status === 1); // Status RECEIVED
-
-  /**
-   * LEÇON 4 : Calcul des récompenses
-   *
-   * rewardAmount par bouteille * nombre de bouteilles retournées
-   */
+  const returnablePackages = userPackages.filter((pkg) => pkg.status === 1);
 
   const selectedPackage = returnablePackages.find(
     (pkg) => pkg.id === parseInt(selectedPackageId)
   );
+
   const estimatedReward = useMemo(() => {
     if (!selectedPackage || !returnedCount || !rewardPerBottle) return 0;
 
@@ -118,7 +74,6 @@ export default function ReturnBottles({
     const rewardInWei = BigInt(rewardPerBottle);
     const totalRewardWei = rewardInWei * BigInt(bottleCount);
 
-    // Conversion wei → BOUT (diviser par 1e18)
     return Number(totalRewardWei) / 1e18;
   }, [selectedPackage, returnedCount, rewardPerBottle]);
 
@@ -126,10 +81,6 @@ export default function ReturnBottles({
     if (!rewardPerBottle) return "...";
     return Number(rewardPerBottle) / 1e18;
   }, [rewardPerBottle]);
-
-  // ==========================================
-  // COURS : Validation
-  // ==========================================
 
   const validateForm = (): string | null => {
     if (!selectedPackageId) {
@@ -150,45 +101,11 @@ export default function ReturnBottles({
     return null;
   };
 
-  // ==========================================
-  // COURS : Fonction de retour de bouteilles
-  // ==========================================
-
-  /**
-   * LEÇON 5 : Appel returnBottles avec 2 paramètres
-   *
-   * returnBottles(uint256 tokenId, uint256 returnedCount)
-   */
-
   const handleReturnBottles = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log("=== ReturnBottles Debug ===");
-    console.log("selectedPackageId:", selectedPackageId);
-    console.log("returnedCount:", returnedCount);
-    console.log("selectedPackage:", selectedPackage);
-    console.log("estimatedReward:", estimatedReward);
-
-    // ✅ VÉRIFICATION CRITIQUE DE L'ADRESSE
-    console.log("=== ADRESSE DEBUG CRITIQUE ===");
-    console.log("address from useAccount:", address);
-    console.log("address type:", typeof address);
-    console.log("address length:", address?.length);
-    console.log(
-      "Expected consumer address:",
-      "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
-    );
-    console.log(
-      "Addresses match:",
-      address?.toLowerCase() ===
-        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8".toLowerCase()
-    );
-    console.log("===============================");
-
-    // Validation
     const validationError = validateForm();
     if (validationError) {
-      console.log("Validation error:", validationError);
       setError(validationError);
       return;
     }
@@ -199,10 +116,6 @@ export default function ReturnBottles({
     }
 
     try {
-      // ✅ DEBUG COMPLET AVANT L'APPEL
-      console.log("=== DEBUG RETURN BOTTLES ===");
-
-      // 1. Vérifier le package
       const packageData = await readContract(config, {
         address: chainsToBout[chainId]?.nft as Address,
         abi: boutNftAbi,
@@ -210,13 +123,6 @@ export default function ReturnBottles({
         args: [BigInt(selectedPackageId)],
       });
 
-      console.log("Package data:", packageData);
-      console.log("Package status:", packageData.status);
-      console.log("Package bottleCount:", Number(packageData.bottleCount));
-      console.log("Package consumer:", packageData.consumer);
-      console.log("Current user:", address);
-
-      // 2. Vérifier l'ownership du NFT
       const nftOwner = await readContract(config, {
         address: chainsToBout[chainId]?.nft as Address,
         abi: boutNftAbi,
@@ -224,14 +130,6 @@ export default function ReturnBottles({
         args: [BigInt(selectedPackageId)],
       });
 
-      console.log("NFT owner:", nftOwner);
-      console.log("Current user:", address);
-      console.log(
-        "User owns NFT:",
-        nftOwner.toLowerCase() === address?.toLowerCase()
-      );
-
-      // 3. Vérifications métier
       const checks = {
         statusIsReceived: Number(packageData.status) === 1,
         userIsConsumer:
@@ -242,14 +140,10 @@ export default function ReturnBottles({
         returnCountPositive: parseInt(returnedCount) > 0,
       };
 
-      console.log("Checks:", checks);
-
-      // 4. Identifier le problème
       const failedChecks = Object.entries(checks).filter(
         ([_, passed]) => !passed
       );
       if (failedChecks.length > 0) {
-        console.error("❌ Failed checks:", failedChecks);
         const failedNames = failedChecks.map(([check]) => {
           switch (check) {
             case "statusIsReceived":
@@ -270,168 +164,79 @@ export default function ReturnBottles({
         return;
       }
 
-      console.log("✅ Toutes les vérifications passent, appel du contrat...");
-      console.log("============================");
+      const tokenExists = await readContract(config, {
+        address: boutTrackerAddress as Address,
+        abi: boutTrackerAbi,
+        functionName: "tokenExists",
+        args: [BigInt(selectedPackageId)],
+      });
 
-      // 🔍 VÉRIFICATIONS SUPPLÉMENTAIRES SPÉCIFIQUES AU SMART CONTRACT
-      try {
-        console.log("🧪 Vérifications avancées...");
+      const packageStatus = await readContract(config, {
+        address: chainsToBout[chainId]?.nft as Address,
+        abi: boutNftAbi,
+        functionName: "getPackageStatus",
+        args: [BigInt(selectedPackageId)],
+      });
 
-        // 1. Vérifier que le token existe dans le tracker
-        const tokenExists = await readContract(config, {
-          address: boutTrackerAddress as Address,
-          abi: boutTrackerAbi,
-          functionName: "tokenExists",
-          args: [BigInt(selectedPackageId)],
+      const isBanned = await readContract(config, {
+        address: chainsToBout[chainId]?.nft as Address,
+        abi: boutNftAbi,
+        functionName: "isPackageBanned",
+        args: [BigInt(selectedPackageId)],
+      });
+
+      const advancedChecks = {
+        tokenExistsInTracker: tokenExists,
+        packageStatusCorrect: Number(packageStatus) === 1,
+        packageNotBanned: !isBanned,
+      };
+
+      const failedAdvancedChecks = Object.entries(advancedChecks).filter(
+        ([_, passed]) => !passed
+      );
+      if (failedAdvancedChecks.length > 0) {
+        const failedNames = failedAdvancedChecks.map(([check]) => {
+          switch (check) {
+            case "tokenExistsInTracker":
+              return "Token non reconnu par le tracker";
+            case "packageStatusCorrect":
+              return "Statut package incorrect dans NFT";
+            case "packageNotBanned":
+              return "Package banni";
+            default:
+              return check;
+          }
         });
-        console.log("Token exists in tracker:", tokenExists);
-
-        // 2. Vérifier l'état exact du package via NFT
-        const packageStatus = await readContract(config, {
-          address: chainsToBout[chainId]?.nft as Address,
-          abi: boutNftAbi,
-          functionName: "getPackageStatus",
-          args: [BigInt(selectedPackageId)],
-        });
-        console.log("Package status from NFT:", packageStatus);
-
-        // 3. Vérifier si le package est banni
-        const isBanned = await readContract(config, {
-          address: chainsToBout[chainId]?.nft as Address,
-          abi: boutNftAbi,
-          functionName: "isPackageBanned",
-          args: [BigInt(selectedPackageId)],
-        });
-        console.log("Package is banned:", isBanned);
-
-        // 4. Vérifications spéciales
-        const advancedChecks = {
-          tokenExistsInTracker: tokenExists,
-          packageStatusCorrect: Number(packageStatus) === 1,
-          packageNotBanned: !isBanned,
-        };
-
-        console.log("Advanced checks:", advancedChecks);
-
-        const failedAdvancedChecks = Object.entries(advancedChecks).filter(
-          ([_, passed]) => !passed
-        );
-        if (failedAdvancedChecks.length > 0) {
-          console.error("❌ Failed advanced checks:", failedAdvancedChecks);
-          const failedNames = failedAdvancedChecks.map(([check]) => {
-            switch (check) {
-              case "tokenExistsInTracker":
-                return "Token non reconnu par le tracker";
-              case "packageStatusCorrect":
-                return "Statut package incorrect dans NFT";
-              case "packageNotBanned":
-                return "Package banni";
-              default:
-                return check;
-            }
-          });
-          setError(`Erreurs avancées: ${failedNames.join(", ")}`);
-          return;
-        }
-
-        console.log("✅ Toutes les vérifications avancées passent aussi");
-        console.log("🚀 Tentative d'appel avec gestion d'erreur détaillée...");
-      } catch (advancedError: any) {
-        console.error(
-          "❌ Erreur lors des vérifications avancées:",
-          advancedError
-        );
-        setError(`Erreur de vérification: ${advancedError.message}`);
+        setError(`Erreurs avancées: ${failedNames.join(", ")}`);
         return;
       }
 
       setIsReturning(true);
       setError("");
 
-      console.log(
-        "Calling returnBottles with:",
-        selectedPackageId,
-        returnedCount
-      );
-
-      // Appel de la fonction returnBottles du smart contract
       await writeContract({
         address: boutTrackerAddress as `0x${string}`,
         abi: boutTrackerAbi,
         functionName: "returnBottles",
-        args: [
-          BigInt(selectedPackageId), // uint256 tokenId
-          BigInt(returnedCount), // uint256 returnedCount
-        ],
+        args: [BigInt(selectedPackageId), BigInt(returnedCount)],
       });
-
-      console.log("Transaction submitted successfully");
     } catch (err: any) {
-      console.error("=== ERROR ReturnBottles ===");
-      console.error("Full error:", err);
-      console.error("Error message:", err.message);
-      console.error("========================");
-
       setError(err.message || "Erreur lors du retour des bouteilles");
       setIsReturning(false);
     }
   };
 
-  // ==========================================
-  // COURS : Reset après succès
-  // ==========================================
-
-  // Debug: Log des états wagmi
-  useEffect(() => {
-    console.log("=== ReturnBottles Wagmi States ===");
-    console.log("hash:", hash);
-    console.log("isWriting:", isWriting);
-    console.log("isConfirming:", isConfirming);
-    console.log("isConfirmed:", isConfirmed);
-    console.log("isTransactionError:", isTransactionError);
-    console.log("transactionError:", transactionError);
-    console.log("writeError:", writeError);
-    console.log("=================================");
-  }, [
-    hash,
-    isWriting,
-    isConfirming,
-    isConfirmed,
-    isTransactionError,
-    transactionError,
-    writeError,
-  ]);
-
-  // Debug des récompenses
-  useEffect(() => {
-    console.log("=== REWARD DEBUG ReturnBottles ===");
-    console.log("rewardPerBottle (raw):", rewardPerBottle);
-    console.log("rewardPerBottleDisplay:", rewardPerBottleDisplay);
-    console.log("estimatedReward:", estimatedReward);
-    console.log("================================");
-  }, [rewardPerBottle, rewardPerBottleDisplay, estimatedReward]);
-
   useEffect(() => {
     if (isConfirmed) {
-      console.log("ReturnBottles: Bouteilles retournées avec succès!");
       setIsReturning(false);
-
-      // Reset du formulaire
       setSelectedPackageId("");
       setReturnedCount("");
-
-      // Notifier le parent
       onBottlesReturned();
       refetch();
     }
   }, [isConfirmed, onBottlesReturned, refetch]);
 
-  // État de loading global
   const isLoading = isWriting || isConfirming || isReturning;
-
-  // ==========================================
-  // COURS : Interface utilisateur
-  // ==========================================
 
   return (
     <div className="bg-orange-50 p-6 rounded-lg">
@@ -439,7 +244,6 @@ export default function ReturnBottles({
         ♻️ Retourner des Bouteilles
       </h2>
 
-      {/* Vérification si packages disponibles */}
       {returnablePackages.length === 0 ? (
         <div className="text-center p-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
           <div className="text-4xl mb-2">📦</div>
@@ -452,7 +256,6 @@ export default function ReturnBottles({
         </div>
       ) : (
         <>
-          {/* Affichage des erreurs */}
           {(error || writeError) && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
               <div className="text-red-700 text-sm">
@@ -464,7 +267,6 @@ export default function ReturnBottles({
           )}
 
           <form onSubmit={handleReturnBottles} className="space-y-4">
-            {/* Sélection du package */}
             <div>
               <label
                 htmlFor="packageSelect"
@@ -492,7 +294,6 @@ export default function ReturnBottles({
               </select>
             </div>
 
-            {/* Affichage des détails du package sélectionné */}
             {selectedPackage && (
               <div className="bg-white p-4 rounded-lg border border-orange-200">
                 <h3 className="font-medium text-gray-800 mb-2">
@@ -511,13 +312,12 @@ export default function ReturnBottles({
                   </div>
                   <div>
                     <strong>Récompense par bouteille:</strong>{" "}
-                    {rewardPerBottleDisplay} BOUT (récupéré du contrat)
+                    {rewardPerBottleDisplay} BOUT
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Nombre de bouteilles à retourner */}
             <div>
               <label
                 htmlFor="returnedCount"
@@ -550,7 +350,6 @@ export default function ReturnBottles({
               )}
             </div>
 
-            {/* Calcul des récompenses */}
             {estimatedReward > 0 && (
               <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                 <div className="flex items-center space-x-2">
@@ -562,15 +361,11 @@ export default function ReturnBottles({
                     <div className="text-sm text-green-600">
                       {returnedCount} bouteilles × {rewardPerBottleDisplay} BOUT
                     </div>
-                    <div className="text-xs text-green-500 mt-1">
-                      ✅ Calculé directement depuis le smart contract
-                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Bouton de soumission */}
             <button
               type="submit"
               disabled={isLoading || !selectedPackage || !returnedCount}
@@ -597,7 +392,6 @@ export default function ReturnBottles({
             </button>
           </form>
 
-          {/* Statut de la transaction */}
           {hash && (
             <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
               <div className="text-orange-700 text-sm">
@@ -649,7 +443,6 @@ export default function ReturnBottles({
         </>
       )}
 
-      {/* Info utile */}
       <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded">
         <div>
           <strong>💡 Comment ça marche :</strong>

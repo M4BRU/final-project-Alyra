@@ -6,7 +6,6 @@ import {Script} from "forge-std/Script.sol";
 contract HelperConfig is Script {
     NetworkConfig public activeNetworkConfig;
 
-    // Constantes par défaut pour les récompenses
     uint256 public constant DEFAULT_REWARD_PER_BOTTLE = 10 * 1e18; // 10 BOUT tokens par bouteille
     uint256 public constant DEFAULT_SUPPLIER_BONUS_RATE = 10; // 10% bonus pour le supplier
     uint256 public constant DEFAULT_MAX_ACTIVE_PACKAGES = 50;
@@ -16,7 +15,6 @@ contract HelperConfig is Script {
         uint256 supplierBonusRate;
         uint256 maxActivePackages;
     }
-    // Ajouter d'autres paramètres de configuration si nécessaire
 
     constructor() {
         if (block.chainid == 11155111) {

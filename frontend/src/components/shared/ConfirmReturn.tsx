@@ -12,18 +12,6 @@ import { useChainId } from "wagmi";
 import { readContract } from "@wagmi/core";
 import { Address } from "viem";
 
-// ==========================================
-// COURS : Props et Types
-// ==========================================
-
-/**
- * LEÇON 1 : Props du composant
- *
- * - onReturnConfirmed: Callback pour notifier le parent qu'un retour a été confirmé
- * - refetch: Fonction pour rafraîchir les données après confirmation
- * - supplierPackages: Liste des packages du supplier en attente de confirmation
- */
-
 export interface ConfirmReturnProps {
   onReturnConfirmed: () => void;
   refetch: () => void;
@@ -33,7 +21,7 @@ export interface ConfirmReturnProps {
     status: number;
     rewardAmount: number;
     bottleCount: number;
-    packageLink: string; // ✅ Ajouté
+    packageLink: string;
   }>;
 }
 
@@ -46,18 +34,6 @@ export default function ConfirmReturn({
   const config = useConfig();
   const boutTrackerAddress = chainsToBout[chainId]?.tracker;
 
-  // ==========================================
-  // COURS : États du composant
-  // ==========================================
-
-  /**
-   * LEÇON 2 : États pour la confirmation
-   *
-   * - confirmingPackageId: ID du package en cours de confirmation (pour loading)
-   * - error: Gestion des erreurs
-   * - packageDetails: Détails complets des packages depuis le smart contract
-   */
-
   const [confirmingPackageId, setConfirmingPackageId] = useState<number | null>(
     null
   );
@@ -65,10 +41,6 @@ export default function ConfirmReturn({
   const [packageDetails, setPackageDetails] = useState<{ [key: number]: any }>(
     {}
   );
-
-  // ==========================================
-  // COURS : Hooks wagmi pour les transactions
-  // ==========================================
 
   const {
     writeContract,
@@ -86,35 +58,14 @@ export default function ConfirmReturn({
     hash,
   });
 
-  // ==========================================
-  // COURS : Logique métier
-  // ==========================================
-
-  /**
-   * LEÇON 3 : Filtrer les packages en attente de confirmation
-   *
-   * Seuls les packages avec status RETURNED (2) peuvent être confirmés
-   */
-
   const pendingConfirmationPackages = supplierPackages.filter(
     (pkg) => pkg.status === 2
-  ); // Status RETURNED
-
-  // ==========================================
-  // COURS : Récupération des détails depuis le smart contract
-  // ==========================================
-
-  /**
-   * LEÇON 4 : Récupérer les vrais détails depuis le NFT
-   * Pour avoir returnedCount au lieu de bottleCount
-   */
+  );
 
   const fetchPackageDetails = async () => {
     if (pendingConfirmationPackages.length === 0) return;
 
     try {
-      console.log("=== Fetching Package Details ===");
-
       const details: { [key: number]: any } = {};
 
       for (const pkg of pendingConfirmationPackages) {
@@ -131,41 +82,22 @@ export default function ConfirmReturn({
             returnedCount: Number(packageData.returnedCount),
             bottleCount: Number(packageData.bottleCount),
           };
-
-          console.log(`Package ${pkg.id} details:`, details[pkg.id]);
         } catch (error) {
           console.error(`Erreur pour package ${pkg.id}:`, error);
         }
       }
 
       setPackageDetails(details);
-      console.log("All package details:", details);
     } catch (error) {
       console.error("Erreur lors de la récupération des détails:", error);
     }
   };
 
-  // Récupérer les détails quand les packages changent
   useEffect(() => {
     fetchPackageDetails();
   }, [pendingConfirmationPackages.length]);
 
-  // ==========================================
-  // COURS : Fonction de confirmation individuelle
-  // ==========================================
-
-  /**
-   * LEÇON 5 : Confirmation par package
-   *
-   * confirmReturn(uint256 tokenId) - fonction simple à 1 paramètre
-   */
-
   const handleConfirmReturn = async (packageId: number) => {
-    console.log("=== ConfirmReturn Debug ===");
-    console.log("packageId:", packageId);
-    console.log("boutTrackerAddress:", boutTrackerAddress);
-    console.log("Package details:", packageDetails[packageId]);
-
     if (!boutTrackerAddress) {
       setError("Contrat non déployé sur ce réseau");
       return;
@@ -175,62 +107,39 @@ export default function ConfirmReturn({
       setConfirmingPackageId(packageId);
       setError("");
 
-      console.log("Calling confirmReturn with:", packageId);
-
-      // Appel de la fonction confirmReturn du smart contract
       await writeContract({
         address: boutTrackerAddress as `0x${string}`,
         abi: boutTrackerAbi,
         functionName: "confirmReturn",
-        args: [BigInt(packageId)], // uint256 tokenId
+        args: [BigInt(packageId)],
       });
-
-      console.log("Transaction submitted successfully");
     } catch (err: any) {
-      console.error("=== ERROR ConfirmReturn ===");
-      console.error("Full error:", err);
-      console.error("Error message:", err.message);
-      console.error("========================");
-
       setError(err.message || "Erreur lors de la confirmation");
       setConfirmingPackageId(null);
     }
   };
 
-  // ==========================================
-  // COURS : Reset après succès
-  // ==========================================
-
   useEffect(() => {
     if (isConfirmed) {
-      console.log("ConfirmReturn: Retour confirmé avec succès!");
       setConfirmingPackageId(null);
 
-      // Rafraîchir les détails après confirmation
       setTimeout(() => {
         fetchPackageDetails();
       }, 1000);
 
-      // Notifier le parent
       onReturnConfirmed();
       refetch();
     }
   }, [isConfirmed, onReturnConfirmed, refetch]);
 
-  // État de loading pour chaque package
   const isPackageLoading = (packageId: number) => {
     return confirmingPackageId === packageId && (isWriting || isConfirming);
   };
-
-  // ==========================================
-  // COURS : Interface utilisateur
-  // ==========================================
 
   return (
     <div className="bg-purple-50 p-6 rounded-lg">
       <h2 className="text-xl font-semibold mb-4">✅ Confirmer les Retours</h2>
 
-      {/* Vérification si packages en attente */}
       {pendingConfirmationPackages.length === 0 ? (
         <div className="text-center p-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
           <div className="text-4xl mb-2">📋</div>
@@ -244,7 +153,6 @@ export default function ConfirmReturn({
         </div>
       ) : (
         <>
-          {/* Affichage des erreurs globales */}
           {(error || writeError) && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
               <div className="text-red-700">
@@ -253,7 +161,6 @@ export default function ConfirmReturn({
             </div>
           )}
 
-          {/* Liste des packages en attente */}
           <div className="space-y-4">
             {pendingConfirmationPackages.map((pkg) => {
               const details = packageDetails[pkg.id];
@@ -265,7 +172,6 @@ export default function ConfirmReturn({
                   key={pkg.id}
                   className="bg-white p-4 rounded-lg border border-purple-200 shadow-sm"
                 >
-                  {/* Header du package */}
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-3">
                       <div className="bg-purple-100 p-2 rounded-full">
@@ -287,13 +193,11 @@ export default function ConfirmReturn({
                       </div>
                     </div>
 
-                    {/* Statut */}
                     <div className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
                       ⏳ En attente de confirmation
                     </div>
                   </div>
 
-                  {/* Détails du package */}
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4 text-sm">
                     <div>
                       <div className="text-gray-500">Package Link</div>
@@ -327,7 +231,6 @@ export default function ConfirmReturn({
                     </div>
                   </div>
 
-                  {/* Détails supplémentaires si disponibles */}
                   {details && (
                     <div className="bg-gray-50 p-3 rounded-lg mb-4 text-sm">
                       <div className="font-medium text-gray-700 mb-2">
@@ -363,7 +266,6 @@ export default function ConfirmReturn({
                     </div>
                   )}
 
-                  {/* Bouton de confirmation */}
                   <div className="flex justify-end">
                     <button
                       onClick={() => handleConfirmReturn(pkg.id)}
@@ -397,7 +299,6 @@ export default function ConfirmReturn({
             })}
           </div>
 
-          {/* Statut de la transaction */}
           {hash && (
             <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
               <div className="text-purple-700 text-sm">
@@ -448,7 +349,6 @@ export default function ConfirmReturn({
         </>
       )}
 
-      {/* Info utile */}
       <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded">
         <div>
           <strong>💡 Comment ça marche :</strong>

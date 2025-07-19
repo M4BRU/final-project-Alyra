@@ -5,17 +5,6 @@ import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { chainsToBout, boutTrackerAbi } from "@/constants";
 import { useChainId } from "wagmi";
 
-// ==========================================
-// COURS : Props et Types
-// ==========================================
-
-/**
- * LEÇON 1 : Props du composant
- *
- * - onPackageReceived: Callback pour notifier le parent qu'un package a été reçu
- * - refetch: Fonction pour rafraîchir les données après réception
- */
-
 export interface ReceivePackageProps {
   onPackageReceived: () => void;
   refetch: () => void;
@@ -28,25 +17,9 @@ export default function ReceivePackage({
   const chainId = useChainId();
   const boutTrackerAddress = chainsToBout[chainId]?.tracker;
 
-  // ==========================================
-  // COURS : États du formulaire
-  // ==========================================
-
-  /**
-   * LEÇON 2 : Interface simple - Un seul champ
-   *
-   * - packageLink: Le lien/ID du package (simule le scan QR)
-   * - isReceiving: État de loading pendant réception
-   * - error: Gestion des erreurs
-   */
-
   const [packageLink, setPackageLink] = useState<string>("");
   const [isReceiving, setIsReceiving] = useState(false);
   const [error, setError] = useState<string>("");
-
-  // ==========================================
-  // COURS : Hooks wagmi pour les transactions
-  // ==========================================
 
   const {
     writeContract,
@@ -64,14 +37,6 @@ export default function ReceivePackage({
     hash,
   });
 
-  // ==========================================
-  // COURS : Validation simple
-  // ==========================================
-
-  /**
-   * LEÇON 3 : Validation basique pour packageLink
-   */
-
   const validateForm = (): string | null => {
     if (!packageLink.trim()) {
       return "Le lien du package est requis";
@@ -84,27 +49,11 @@ export default function ReceivePackage({
     return null;
   };
 
-  // ==========================================
-  // COURS : Fonction de réception de package
-  // ==========================================
-
-  /**
-   * LEÇON 4 : Appel simple avec un seul paramètre
-   *
-   * receivePackage(packageLink) - string uniquement
-   */
-
   const handleReceivePackage = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log("=== ReceivePackage Debug ===");
-    console.log("packageLink:", packageLink);
-    console.log("boutTrackerAddress:", boutTrackerAddress);
-
-    // Validation
     const validationError = validateForm();
     if (validationError) {
-      console.log("Validation error:", validationError);
       setError(validationError);
       return;
     }
@@ -118,80 +67,33 @@ export default function ReceivePackage({
       setIsReceiving(true);
       setError("");
 
-      console.log("Calling receivePackage with:", packageLink.trim());
-
-      // Appel de la fonction receivePackage du smart contract
       await writeContract({
         address: boutTrackerAddress as `0x${string}`,
         abi: boutTrackerAbi,
         functionName: "receivePackage",
-        args: [packageLink.trim()], // Un seul argument: string packageLink
+        args: [packageLink.trim()],
       });
-
-      console.log("Transaction submitted successfully");
     } catch (err: any) {
-      console.error("=== ERROR ReceivePackage ===");
-      console.error("Full error:", err);
-      console.error("Error message:", err.message);
-      console.error("Error cause:", err.cause);
-      console.error("========================");
-
       setError(err.message || "Erreur lors de la réception du package");
       setIsReceiving(false);
     }
   };
 
-  // ==========================================
-  // COURS : Reset après succès
-  // ==========================================
-
-  // Debug: Log des états wagmi
-  useEffect(() => {
-    console.log("=== ReceivePackage Wagmi States ===");
-    console.log("hash:", hash);
-    console.log("isWriting:", isWriting);
-    console.log("isConfirming:", isConfirming);
-    console.log("isConfirmed:", isConfirmed);
-    console.log("isTransactionError:", isTransactionError);
-    console.log("transactionError:", transactionError);
-    console.log("writeError:", writeError);
-    console.log("=================================");
-  }, [
-    hash,
-    isWriting,
-    isConfirming,
-    isConfirmed,
-    isTransactionError,
-    transactionError,
-    writeError,
-  ]);
-
   useEffect(() => {
     if (isConfirmed) {
-      console.log("ReceivePackage: Package reçu avec succès!");
       setIsReceiving(false);
-
-      // Reset du formulaire
       setPackageLink("");
-
-      // Notifier le parent
       onPackageReceived();
       refetch();
     }
-  }, [isConfirmed]); // ✅ Seulement isConfirmed comme dépendance
+  }, [isConfirmed, onPackageReceived, refetch]);
 
-  // État de loading global
   const isLoading = isWriting || isConfirming || isReceiving;
-
-  // ==========================================
-  // COURS : Interface "scan QR code"
-  // ==========================================
 
   return (
     <div className="bg-green-50 p-6 rounded-lg">
       <h2 className="text-xl font-semibold mb-4">📱 Recevoir un Package</h2>
 
-      {/* Simulation QR Scanner */}
       <div className="mb-4 p-4 bg-white border-2 border-dashed border-green-300 rounded-lg text-center">
         <div className="text-4xl mb-2">📱</div>
         <div className="text-green-700 font-medium">
@@ -203,7 +105,6 @@ export default function ReceivePackage({
         </div>
       </div>
 
-      {/* Affichage des erreurs */}
       {(error || writeError) && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
           <div className="text-red-700">
@@ -213,7 +114,6 @@ export default function ReceivePackage({
       )}
 
       <form onSubmit={handleReceivePackage} className="space-y-4">
-        {/* Champ Package Link */}
         <div>
           <label
             htmlFor="packageLink"
@@ -239,7 +139,6 @@ export default function ReceivePackage({
           </div>
         </div>
 
-        {/* Bouton de soumission */}
         <button
           type="submit"
           disabled={isLoading}
@@ -266,7 +165,6 @@ export default function ReceivePackage({
         </button>
       </form>
 
-      {/* Statut de la transaction */}
       {hash && (
         <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
           <div className="text-green-700 text-sm">
@@ -315,7 +213,6 @@ export default function ReceivePackage({
         </div>
       )}
 
-      {/* Info utile */}
       <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded">
         <div>
           <strong>💡 Comment ça marche :</strong>

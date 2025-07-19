@@ -20,20 +20,15 @@ contract DeployBoutSystem is Script {
 
         vm.startBroadcast();
 
-        // 1. Déployer BoutToken d'abord (avec tracker temporaire à address(0))
         BoutToken boutToken = new BoutToken(address(0));
 
-        // 2. Déployer BoutNFT (avec tracker temporaire à address(0))
         BoutNFT boutNFT = new BoutNFT(address(0));
 
-        // 3. Déployer BoutTracker avec les vraies adresses
         BoutTracker boutTracker = new BoutTracker(address(boutNFT), address(boutToken));
 
-        // 4. Configurer les trackers dans BoutToken et BoutNFT
         boutToken.setTracker(address(boutTracker));
         boutNFT.setTracker(address(boutTracker));
 
-        // 5. Configuration optionnelle des récompenses
         boutTracker.setRewardPerBottle(rewardPerBottle);
         boutTracker.setSupplierBonusRate(supplierBonusRate);
 

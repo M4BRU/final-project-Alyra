@@ -26,7 +26,6 @@ import { readContract } from "@wagmi/core";
 import { Address, parseAbiItem } from "viem";
 import { usePublicClient } from "../hooks/usePublicClient";
 
-// Types pour BOUT Events
 export type BoutEvent = {
   type:
     | "SupplierRegistered"
@@ -51,10 +50,10 @@ export type PackageType = {
   id: number;
   supplier: string;
   consumer?: string;
-  status: number; // 0=SENT, 1=RECEIVED, 2=RETURNED, 3=CONFIRMED
+  status: number;
   rewardAmount: number;
   bottleCount: number;
-  returnedCount?: number; // pour les retours partiels
+  returnedCount?: number;
   packageLink: string;
   createdAt?: number;
   receivedAt?: number;
@@ -70,7 +69,6 @@ export default function BoutSystem() {
   const { writeContractAsync } = useWriteContract();
   const { address } = useAccount();
 
-  // États principaux
   const [events, setEvents] = useState<BoutEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [packages, setPackages] = useState<PackageType[]>([]);
@@ -78,16 +76,12 @@ export default function BoutSystem() {
   const [refreshCount, setRefreshCount] = useState(0);
   const [eventRange, setEventRange] = useState<number>(300);
 
-  // États spécifiques à BOUT
   const [userRole, setUserRole] = useState<"SUPPLIER" | "CONSUMER" | null>(
     null
   );
   const [isRegistered, setIsRegistered] = useState(false);
-
-  // Pour éviter l'erreur d'hydratation
   const [hasMounted, setHasMounted] = useState(false);
 
-  // TOKEN BALANCE TEMPS RÉEL
   const { data: rawTokenBalance } = useReadContract({
     address: boutTokenAddress as `0x${string}`,
     abi: boutTokenAbi,
@@ -104,7 +98,6 @@ export default function BoutSystem() {
     setHasMounted(true);
   }, []);
 
-  // Vérifier si l'utilisateur est enregistré et son rôle
   const checkUserRegistration = useCallback(async () => {
     if (!boutTrackerAddress || !address) return;
 
@@ -138,18 +131,11 @@ export default function BoutSystem() {
     }
   }, [boutTrackerAddress, address, config]);
 
-  // Récupérer les packages avec détails complets
   const getPackagesFromEvents = useCallback(async () => {
     if (!boutTrackerAddress || !isRegistered || !address) return;
 
     setLoadingPackages(true);
     try {
-      console.log("=== getPackagesFromEvents Debug ===");
-      console.log("boutTrackerAddress:", boutTrackerAddress);
-      console.log("userRole:", userRole);
-      console.log("address:", address);
-
-      // Récupérer la récompense par bouteille
       const rewardPerBottleRaw = (await readContract(config, {
         address: boutTrackerAddress as Address,
         abi: boutTrackerAbi,
@@ -158,7 +144,6 @@ export default function BoutSystem() {
 
       const rewardPerBottle = Number(rewardPerBottleRaw) / 1e18;
 
-      // Récupérer les packages de l'utilisateur
       let packageIds: readonly bigint[] = [];
 
       if (userRole === "CONSUMER") {
@@ -177,9 +162,6 @@ export default function BoutSystem() {
         })) as readonly bigint[];
       }
 
-      console.log("packageIds from blockchain:", packageIds);
-
-      // Récupérer les détails complets de chaque package
       const packageDetails: (PackageType | null)[] = await Promise.all(
         packageIds.map(async (tokenId) => {
           try {
@@ -223,22 +205,18 @@ export default function BoutSystem() {
     }
   }, [boutTrackerAddress, isRegistered, userRole, address, config, chainId]);
 
-  // ✅ RÉCUPÉRER LES VRAIS EVENTS BLOCKCHAIN
   const getEvents = useCallback(async () => {
     if (!boutTrackerAddress) return;
 
     setLoadingEvents(true);
 
     try {
-      console.log("=== Fetching BOUT Events ===");
-
       const currentBlock = await publicClient.getBlockNumber();
       const fromBlock =
         currentBlock > BigInt(eventRange)
           ? currentBlock - BigInt(eventRange)
           : 0n;
 
-      // Récupérer tous les events en parallèle
       const [
         supplierRegisteredEvents,
         consumerRegisteredEvents,
@@ -248,7 +226,6 @@ export default function BoutSystem() {
         rewardsAllocatedEvents,
         rewardsWithdrawnEvents,
       ] = await Promise.all([
-        // SupplierRegistered events
         publicClient.getLogs({
           address: boutTrackerAddress as Address,
           event: parseAbiItem(
@@ -257,7 +234,6 @@ export default function BoutSystem() {
           fromBlock: fromBlock,
           toBlock: "latest",
         }),
-        // ConsumerRegistered events
         publicClient.getLogs({
           address: boutTrackerAddress as Address,
           event: parseAbiItem(
@@ -266,7 +242,6 @@ export default function BoutSystem() {
           fromBlock: fromBlock,
           toBlock: "latest",
         }),
-        // PackageCreated events
         publicClient.getLogs({
           address: boutTrackerAddress as Address,
           event: parseAbiItem(
@@ -275,7 +250,6 @@ export default function BoutSystem() {
           fromBlock: fromBlock,
           toBlock: "latest",
         }),
-        // PackageReceived events
         publicClient.getLogs({
           address: boutTrackerAddress as Address,
           event: parseAbiItem(
@@ -284,7 +258,6 @@ export default function BoutSystem() {
           fromBlock: fromBlock,
           toBlock: "latest",
         }),
-        // BottlesReturnedPending events
         publicClient.getLogs({
           address: boutTrackerAddress as Address,
           event: parseAbiItem(
@@ -293,7 +266,6 @@ export default function BoutSystem() {
           fromBlock: fromBlock,
           toBlock: "latest",
         }),
-        // RewardsAllocated events
         publicClient.getLogs({
           address: boutTrackerAddress as Address,
           event: parseAbiItem(
@@ -302,7 +274,6 @@ export default function BoutSystem() {
           fromBlock: fromBlock,
           toBlock: "latest",
         }),
-        // RewardsWithdrawn events
         publicClient.getLogs({
           address: boutTrackerAddress as Address,
           event: parseAbiItem(
@@ -313,19 +284,18 @@ export default function BoutSystem() {
         }),
       ]);
 
-      // Combiner tous les events
       const combinedEvents: BoutEvent[] = [
         ...supplierRegisteredEvents.map((event) => ({
           type: "SupplierRegistered" as const,
           userAddress: event.args.addressSupplier?.toString(),
-          userRole: 1, // SUPPLIER
+          userRole: 1,
           blockNumber: Number(event.blockNumber),
           transactionHash: event.transactionHash,
         })),
         ...consumerRegisteredEvents.map((event) => ({
           type: "ConsumerRegistered" as const,
           userAddress: event.args.addressConsumer?.toString(),
-          userRole: 2, // CONSUMER
+          userRole: 2,
           blockNumber: Number(event.blockNumber),
           transactionHash: event.transactionHash,
         })),
@@ -372,12 +342,10 @@ export default function BoutSystem() {
         })),
       ];
 
-      // Trier par numéro de bloc (plus récent en premier)
       const sortedEvents = combinedEvents.sort(
         (a, b) => b.blockNumber - a.blockNumber
       );
 
-      console.log("Total events found:", sortedEvents.length);
       setEvents(sortedEvents);
     } catch (error) {
       console.error("Erreur lors de la récupération des events:", error);
@@ -387,7 +355,6 @@ export default function BoutSystem() {
     }
   }, [boutTrackerAddress, publicClient, eventRange]);
 
-  // Fonction de refresh globale
   const refetchAll = useCallback(async () => {
     await Promise.all([
       getPackagesFromEvents(),
@@ -397,7 +364,6 @@ export default function BoutSystem() {
     setRefreshCount((c) => c + 1);
   }, [getPackagesFromEvents, getEvents, checkUserRegistration]);
 
-  // Effects principaux
   useEffect(() => {
     if (address) {
       checkUserRegistration();
@@ -411,7 +377,6 @@ export default function BoutSystem() {
     }
   }, [isRegistered, getPackagesFromEvents]);
 
-  // Ne rien afficher avant le montage client
   if (!hasMounted) {
     return (
       <div className="space-y-4">
@@ -422,17 +387,14 @@ export default function BoutSystem() {
     );
   }
 
-  // Si pas enregistré dans le système
   if (!isRegistered) {
     return (
       <RegisterUser onRegistrationSuccess={refetchAll} refetch={refetchAll} />
     );
   }
 
-  // Interface principale
   return (
     <div className="space-y-6">
-      {/* ✅ HEADER AVEC TOKEN BALANCE TEMPS RÉEL + BOUTON STATS */}
       <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg border border-green-200">
         <div className="flex items-center justify-between">
           <div>
@@ -461,7 +423,6 @@ export default function BoutSystem() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            {/* Bouton Statistiques */}
             <a
               href="/stats"
               className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 text-sm font-medium"
@@ -469,7 +430,6 @@ export default function BoutSystem() {
               <span>📊</span>
               <span>Statistiques</span>
             </a>
-            {/* Icône du rôle */}
             <div className="text-4xl">
               {userRole === "SUPPLIER" ? "🏭" : "👤"}
             </div>
@@ -477,7 +437,6 @@ export default function BoutSystem() {
         </div>
       </div>
 
-      {/* Sections conditionnelles selon le rôle */}
       {userRole === "SUPPLIER" && (
         <>
           <CreatePackage onPackageCreated={refetchAll} refetch={refetchAll} />
@@ -502,7 +461,6 @@ export default function BoutSystem() {
         </>
       )}
 
-      {/* ✅ SECTION MES PACKAGES ACTIFS COMPLÈTE */}
       <BoutPackageList
         packages={packages}
         loading={loadingPackages}
@@ -510,7 +468,6 @@ export default function BoutSystem() {
         onRefresh={getPackagesFromEvents}
       />
 
-      {/* ✅ SECTION HISTORIQUE COMPLÈTE */}
       <BoutEvent
         events={events}
         loading={loadingEvents}

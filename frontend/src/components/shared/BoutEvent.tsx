@@ -68,7 +68,7 @@ export default function BoutEvent({
   };
 
   const getTimeEstimate = (blocks: number) => {
-    const minutes = Math.round((blocks * 12) / 60); // ~12 secondes par bloc
+    const minutes = Math.round((blocks * 12) / 60);
     if (minutes < 60) return `~${minutes}min`;
     const hours = Math.round(minutes / 60);
     return `~${hours}h`;
@@ -94,7 +94,6 @@ export default function BoutEvent({
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">📈 Activité Récente</h2>
           <div className="flex items-center space-x-2">
-            {/* ✅ Contrôles de plage */}
             {onRangeChange && (
               <select
                 value={eventRange}
@@ -140,7 +139,6 @@ export default function BoutEvent({
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">📈 Activité Récente</h2>
         <div className="flex items-center space-x-3">
-          {/* ✅ Contrôles de plage */}
           {onRangeChange && (
             <div className="flex items-center space-x-2">
               <span className="text-xs text-gray-500">Plage:</span>
@@ -173,7 +171,6 @@ export default function BoutEvent({
         </div>
       </div>
 
-      {/* ✅ Info sur la plage actuelle */}
       <div className="mb-4 p-2 bg-blue-50 rounded-lg border border-blue-200">
         <div className="text-xs text-blue-700">
           📊 Affichage des événements des {eventRange} derniers blocs (
@@ -194,12 +191,9 @@ export default function BoutEvent({
             className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
           >
             <div className="flex items-start space-x-3">
-              {/* Icon */}
               <div className="text-2xl">{getEventIcon(event.type)}</div>
 
-              {/* Content */}
               <div className="flex-1 min-w-0">
-                {/* Header avec badge */}
                 <div className="flex items-center space-x-2 mb-2">
                   <span
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white ${getBadgeColor(
@@ -213,7 +207,6 @@ export default function BoutEvent({
                   </span>
                 </div>
 
-                {/* Event details */}
                 <div className="text-sm text-gray-700">
                   {event.type === "SupplierRegistered" && (
                     <p>
@@ -299,7 +292,6 @@ export default function BoutEvent({
                   )}
                 </div>
 
-                {/* Transaction hash */}
                 {event.transactionHash && (
                   <div className="mt-2 text-xs text-gray-500">
                     <span className="font-medium">TX:</span>{" "}

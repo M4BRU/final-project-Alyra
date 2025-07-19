@@ -5,17 +5,6 @@ import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { chainsToBout, boutTrackerAbi } from "@/constants";
 import { useChainId } from "wagmi";
 
-// ==========================================
-// COURS : Props et Types
-// ==========================================
-
-/**
- * LEÇON 1 : Props du composant
- *
- * - onPackageCreated: Callback pour notifier le parent qu'un package a été créé
- * - refetch: Fonction pour rafraîchir les données après création
- */
-
 interface CreatePackageProps {
   onPackageCreated: () => void;
   refetch: () => void;
@@ -28,29 +17,11 @@ export default function CreatePackage({
   const chainId = useChainId();
   const boutTrackerAddress = chainsToBout[chainId]?.tracker;
 
-  // ==========================================
-  // COURS : États du formulaire
-  // ==========================================
-
-  /**
-   * LEÇON 2 : Gestion des états de formulaire
-   *
-   * - bottleCount: Nombre de bouteilles dans le package
-   * - packageLink: Lien/ID du package (simule le QR code)
-   * - intendedConsumer: Adresse du consumer assigné
-   * - isCreating: État de loading pendant création
-   * - error: Gestion des erreurs
-   */
-
   const [bottleCount, setBottleCount] = useState<string>("");
   const [packageLink, setPackageLink] = useState<string>("");
   const [intendedConsumer, setIntendedConsumer] = useState<string>("");
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string>("");
-
-  // ==========================================
-  // COURS : Hooks wagmi pour les transactions
-  // ==========================================
 
   const {
     writeContract,
@@ -63,17 +34,6 @@ export default function CreatePackage({
     useWaitForTransactionReceipt({
       hash,
     });
-
-  // ==========================================
-  // COURS : Validation des données
-  // ==========================================
-
-  /**
-   * LEÇON 3 : Validation côté client
-   *
-   * Toujours valider les données avant d'envoyer à la blockchain
-   * pour éviter les transactions qui échouent (et qui coûtent du gas)
-   */
 
   const validateForm = (): string | null => {
     if (!bottleCount || parseInt(bottleCount) <= 0) {
@@ -88,7 +48,6 @@ export default function CreatePackage({
       return "L'adresse du consumer est requise";
     }
 
-    // Validation basique d'adresse Ethereum
     if (!intendedConsumer.match(/^0x[a-fA-F0-9]{40}$/)) {
       return "L'adresse du consumer n'est pas valide";
     }
@@ -96,20 +55,9 @@ export default function CreatePackage({
     return null;
   };
 
-  // ==========================================
-  // COURS : Fonction de création de package
-  // ==========================================
-
-  /**
-   * LEÇON 4 : Appel de smart contract avec plusieurs paramètres
-   *
-   * createPackage(bottleCount, packageLink, intendedConsumer)
-   */
-
   const handleCreatePackage = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
@@ -125,75 +73,40 @@ export default function CreatePackage({
       setIsCreating(true);
       setError("");
 
-      // Appel de la fonction createPackage du smart contract
       await writeContract({
         address: boutTrackerAddress as `0x${string}`,
         abi: boutTrackerAbi,
         functionName: "createPackage",
         args: [
-          BigInt(bottleCount), // uint256 bottleCount
-          packageLink, // string packageLink
-          intendedConsumer as `0x${string}`, // address intendedConsumer
+          BigInt(bottleCount),
+          packageLink,
+          intendedConsumer as `0x${string}`,
         ],
-        gas: 1000000n, // Force 800k gas au lieu de estimation auto
-        gasPrice: undefined,
       });
     } catch (err: any) {
-      console.error("Erreur lors de la création du package:", err);
       setError(err.message || "Erreur lors de la création du package");
       setIsCreating(false);
     }
   };
 
-  // ==========================================
-  // COURS : Reset du formulaire après succès
-  // ==========================================
-
-  /**
-   * LEÇON 5 : Réinitialiser le formulaire après succès
-   */
-
-  // Debug: Log des états wagmi
+  // Reset form after successful transaction
   useEffect(() => {
-    console.log("=== CreatePackage Debug ===");
-    console.log("hash:", hash);
-    console.log("isWriting:", isWriting);
-    console.log("isConfirming:", isConfirming);
-    console.log("isConfirmed:", isConfirmed);
-    console.log("writeError:", writeError);
-    console.log("========================");
-  }, [hash, isWriting, isConfirming, isConfirmed, writeError]);
-
-  useEffect(() => {
-    console.log("CreatePackage: isConfirmed changed to", isConfirmed);
     if (isConfirmed) {
-      console.log("CreatePackage: Package confirmed, resetting form...");
       setIsCreating(false);
-
-      // Reset du formulaire
       setBottleCount("");
       setPackageLink("");
       setIntendedConsumer("");
-
-      // Notifier le parent
-      console.log("CreatePackage: Calling onPackageCreated and refetch...");
       onPackageCreated();
       refetch();
     }
-  }, [isConfirmed, onPackageCreated, refetch]); // ✅ Maintenant stable
+  }, [isConfirmed, onPackageCreated, refetch]);
 
-  // État de loading global
   const isLoading = isWriting || isConfirming || isCreating;
-
-  // ==========================================
-  // COURS : Rendu du formulaire
-  // ==========================================
 
   return (
     <div className="bg-blue-50 p-6 rounded-lg">
       <h2 className="text-xl font-semibold mb-4">Créer un Package</h2>
 
-      {/* Affichage des erreurs */}
       {(error || writeError) && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-red-700">
@@ -203,7 +116,6 @@ export default function CreatePackage({
       )}
 
       <form onSubmit={handleCreatePackage} className="space-y-4">
-        {/* Champ Nombre de bouteilles */}
         <div>
           <label
             htmlFor="bottleCount"
@@ -230,7 +142,6 @@ export default function CreatePackage({
           </p>
         </div>
 
-        {/* Champ Lien du package */}
         <div>
           <label
             htmlFor="packageLink"
@@ -251,12 +162,10 @@ export default function CreatePackage({
             placeholder="Ex: package-123-abc"
           />
           <p className="text-xs text-gray-500 mt-1">
-            Identifiant unique du package (dans un vrai projet, ce serait un QR
-            code)
+            Identifiant unique du package
           </p>
         </div>
 
-        {/* Champ Consumer assigné */}
         <div>
           <label
             htmlFor="intendedConsumer"
@@ -281,7 +190,6 @@ export default function CreatePackage({
           </p>
         </div>
 
-        {/* Bouton de soumission */}
         <button
           type="submit"
           disabled={isLoading}
@@ -305,7 +213,6 @@ export default function CreatePackage({
         </button>
       </form>
 
-      {/* Statut de la transaction - Version améliorée */}
       {hash && (
         <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-blue-700 text-sm">
@@ -326,8 +233,7 @@ export default function CreatePackage({
           {isConfirming && !isConfirmed && (
             <div className="text-orange-600 text-sm mt-2 flex items-center">
               <div className="animate-pulse w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
-              ⏳ Attente de confirmation sur la blockchain... (peut prendre
-              quelques secondes)
+              ⏳ Attente de confirmation sur la blockchain...
             </div>
           )}
 
@@ -344,16 +250,14 @@ export default function CreatePackage({
         </div>
       )}
 
-      {/* Info utile */}
       <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded">
         <p>
           <strong>💡 Comment ça marche :</strong>
         </p>
-        <p>1. Vous créez un package avec un nombre de bouteilles</p>
-        <p>2. Vous assignez un consumer qui pourra le recevoir</p>
+        <p>1. Créez un package avec un nombre de bouteilles</p>
+        <p>2. Assignez un consumer qui pourra le recevoir</p>
         <p>
-          3. Le consumer pourra scanner le "QR code" (lien) pour récupérer le
-          package
+          3. Le consumer pourra scanner le QR code pour récupérer le package
         </p>
       </div>
     </div>

@@ -7,7 +7,6 @@ import { useChainId, useAccount } from "wagmi";
 import { readContract } from "@wagmi/core";
 import { Address } from "viem";
 
-// Types pour les statistiques
 type SupplierStats = {
   totalPackageSent: number;
   totalBottlesSent: number;
@@ -41,13 +40,6 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
   const { address } = useAccount();
   const boutTrackerAddress = chainsToBout[chainId]?.tracker;
 
-  // ✅ DEBUG LOGS
-  console.log("=== BoutStats Debug ===");
-  console.log("userRole:", userRole);
-  console.log("address:", address);
-  console.log("boutTrackerAddress:", boutTrackerAddress);
-  console.log("========================");
-
   const [supplierStats, setSupplierStats] = useState<SupplierStats | null>(
     null
   );
@@ -57,7 +49,6 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
   const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Récupérer les statistiques globales
   const { data: rawGlobalStats, refetch: refetchGlobalStats } = useReadContract(
     {
       address: boutTrackerAddress as `0x${string}`,
@@ -69,7 +60,6 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
     }
   );
 
-  // Récupérer les statistiques personnelles
   const fetchPersonalStats = async () => {
     if (!boutTrackerAddress || !address || !userRole) return;
 
@@ -111,10 +101,8 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
     }
   };
 
-  // Traiter les statistiques globales
   useEffect(() => {
     if (rawGlobalStats) {
-      // ✅ Correction TypeScript : destructurer directement le tuple
       const [
         totalPackages,
         totalBottlesCirculation,
@@ -133,7 +121,6 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
     }
   }, [rawGlobalStats]);
 
-  // Récupérer les stats personnelles quand nécessaire
   useEffect(() => {
     const loadStats = async () => {
       setLoading(true);
@@ -153,7 +140,6 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
     onRefresh?.();
   };
 
-  // Calculer les métriques personnelles
   const getPersonalMetrics = () => {
     if (userRole === "SUPPLIER" && supplierStats) {
       const returnRate =
@@ -186,18 +172,16 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
     return { returnRate: 0, avgBottlesPerPackage: 0 };
   };
 
-  // Calculer l'impact environnemental
   const getEnvironmentalImpact = (bottlesReturned: number) => {
-    // Estimations basées sur des données réelles :
-    const carbonSavedPerBottle = 0.5; // kg CO2 économisé par bouteille réutilisée
-    const energySavedPerBottle = 0.7; // kWh économisé par bouteille
-    const waterSavedPerBottle = 0.2; // litres d'eau économisés
+    const carbonSavedPerBottle = 0.5;
+    const energySavedPerBottle = 0.7;
+    const waterSavedPerBottle = 0.2;
 
     return {
       carbonSaved: bottlesReturned * carbonSavedPerBottle,
       energySaved: bottlesReturned * energySavedPerBottle,
       waterSaved: bottlesReturned * waterSavedPerBottle,
-      treesEquivalent: (bottlesReturned * carbonSavedPerBottle) / 22, // 1 arbre absorbe ~22kg CO2/an
+      treesEquivalent: (bottlesReturned * carbonSavedPerBottle) / 22,
     };
   };
 
@@ -228,7 +212,6 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
 
   return (
     <div className="space-y-6">
-      {/* Statistiques Personnelles */}
       {userRole && (supplierStats || consumerStats) && (
         <div className="bg-white p-6 rounded-lg border">
           <div className="flex items-center justify-between mb-4">
@@ -326,7 +309,6 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
             </div>
           )}
 
-          {/* Métriques calculées + Impact Environnemental Personnel */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg mb-4">
             <div className="flex items-center justify-between">
               <span className="text-gray-600 font-medium">
@@ -354,7 +336,6 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
             </div>
           </div>
 
-          {/* Impact Environnemental Personnel */}
           {personalImpact && (
             <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
               <h3 className="text-lg font-semibold text-green-800 mb-3 flex items-center">
@@ -405,7 +386,6 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
         </div>
       )}
 
-      {/* Statistiques Globales */}
       {globalStats && (
         <div className="bg-white p-6 rounded-lg border">
           <div className="flex items-center justify-between mb-4">
@@ -455,7 +435,6 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
             </div>
           </div>
 
-          {/* Métriques globales avancées */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
             <div className="text-center">
               <div
@@ -503,9 +482,7 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
             </div>
           </div>
 
-          {/* Barre de progression visuelle + Impact Environnemental Global */}
           <div className="mt-6 space-y-4">
-            {/* Barre de progression */}
             <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-gray-700">
@@ -537,7 +514,6 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
               </div>
             </div>
 
-            {/* Impact Environnemental Global */}
             {globalImpact && (
               <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200">
                 <h3 className="text-lg font-semibold text-emerald-800 mb-3 flex items-center">
@@ -578,7 +554,6 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
                   </div>
                 </div>
 
-                {/* Crédit Carbone Global */}
                 <div className="text-center p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg border border-green-300">
                   <div className="text-2xl font-bold text-green-800 mb-1">
                     💳 Crédit Carbone Global:{" "}
@@ -595,7 +570,6 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
                   </div>
                 </div>
 
-                {/* Comparaisons parlantes */}
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-center">
                   <div className="bg-blue-50 p-3 rounded border border-blue-200">
                     <div className="text-lg font-bold text-blue-700">
@@ -628,7 +602,6 @@ export default function BoutStats({ userRole, onRefresh }: BoutStatsProps) {
         </div>
       )}
 
-      {/* Message si pas de stats personnelles */}
       {userRole && !supplierStats && !consumerStats && !loading && (
         <div className="bg-white p-6 rounded-lg border">
           <div className="text-center p-8 bg-gray-50 rounded-lg">
