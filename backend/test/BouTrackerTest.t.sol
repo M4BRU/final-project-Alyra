@@ -520,7 +520,7 @@ contract BoutTrackerTest is Test {
     }
 
     function testGlobalStatsAfterFullWorkflow() public PackageConfirmedBySupplier {
-        (uint256 totalPackages, uint256 totalBottles, uint256 totalReturned, uint256 totalRewards, uint256 returnRate) =
+        (uint256 totalPackages, uint256 totalBottles, uint256 totalReturned,, uint256 returnRate) =
             boutTracker.getGlobalStats();
 
         assertEq(totalPackages, 1);

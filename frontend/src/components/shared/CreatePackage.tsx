@@ -135,6 +135,8 @@ export default function CreatePackage({
           packageLink, // string packageLink
           intendedConsumer as `0x${string}`, // address intendedConsumer
         ],
+        gas: 1000000n, // Force 800k gas au lieu de estimation auto
+        gasPrice: undefined,
       });
     } catch (err: any) {
       console.error("Erreur lors de la création du package:", err);
